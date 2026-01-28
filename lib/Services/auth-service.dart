@@ -106,4 +106,23 @@ class AuthService {
       rethrow;
     }
   }
+
+  String friendlyAuthError(Object e) {
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-credential':
+          return 'Incorrect username or password.';
+        case 'weak-password':
+          return 'Password is too weak.';
+        case 'email-already-in-use':
+          return 'That username is already registered.';
+        default:
+          return e.message ?? 'Authentication error. Please try again.';
+      }
+    }
+    return e.toString().replaceFirst('Exception: ', '');
+  }
+
 }
