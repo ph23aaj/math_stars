@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "832646305206",
+    "project_id": "mathstars-e6be2",
+    "storage_bucket": "mathstars-e6be2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:832646305206:android:4f6d887c5c22281f501d17",
+        "android_client_info": {
+          "package_name": "com.example.please_work_test"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlVawoWCqgi_VFK74KIFCFa1nTe8yBiWE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
