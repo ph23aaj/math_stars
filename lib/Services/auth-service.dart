@@ -131,4 +131,108 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
 
+  Future<UserCredential> signUpParentWithUsername({
+    required String parentUsername,
+    required String parentPassword,
+    required String childUsername,
+    required String childPassword,
+  }) async {
+    final parentLower = _normaliseUsername(parentUsername);
+    final childLower = _normaliseUsername(childUsername);
+
+    if (parentLower.isEmpty || childLower.isEmpty) {
+      throw Exception('Please enter both parent and child usernames.');
+    }
+    if (parentPassword.length < 4) {
+      throw Exception('Parent password/PIN must be at least 4 characters.');
+    }
+    if (childPassword.isEmpty) {
+      throw Exception('Please enter your child’s password/PIN.');
+    }
+
+    // 1) Verify child account exists by checking username mapping
+    final childUsernameDoc = await _db.collection('usernames').doc(childLower).get();
+    if (!childUsernameDoc.exists) {
+      throw Exception('Child username not found.');
+    }
+
+    final childUid = childUsernameDoc.data()?['uid'] as String?;
+    final childRole = childUsernameDoc.data()?['role'] as String?;
+    if (childUid == null || childRole != 'student') {
+      throw Exception('That child username is not a student account.');
+    }
+
+    // 2) Verify the child's password/PIN is correct (sign in briefly)
+    final childEmail = _emailForUsername(childLower);
+
+    User? currentBefore = _auth.currentUser;
+
+    try {
+      await _auth.signInWithEmailAndPassword(email: childEmail, password: childPassword);
+    } on FirebaseAuthException {
+      throw Exception('Child username/password is incorrect.');
+    } finally {
+      // Return to whatever auth state we had before verifying
+      await _auth.signOut();
+      if (currentBefore != null) {
+        // We don't have the password to restore session; just keep signed out.
+        // In your flow, parent is signing up now anyway.
+      }
+    }
+
+    // 3) Reserve parent username
+    final parentUsernameDoc = _db.collection('usernames').doc(parentLower);
+
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(parentUsernameDoc);
+      if (snap.exists) {
+        throw Exception('That username is already taken.');
+      }
+      tx.set(parentUsernameDoc, {
+        'reserved': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    try {
+      // 4) Create parent auth account
+      final parentEmail = _emailForUsername(parentLower);
+
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: parentEmail,
+        password: parentPassword,
+      );
+
+      final parentUid = cred.user!.uid;
+
+      final batch = _db.batch();
+
+      batch.set(_db.collection('users').doc(parentUid), {
+        'role': 'parent',
+        'username': parentLower,
+        'childUid': childUid,
+        'childUsername': childLower,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      batch.set(_db.collection('parents').doc(parentUid), {
+        'childUid': childUid,
+        'childUsername': childLower,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      batch.set(parentUsernameDoc, {
+        'uid': parentUid,
+        'role': 'parent',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
+      return cred;
+    } catch (e) {
+      await parentUsernameDoc.delete().catchError((_) {});
+      rethrow;
+    }
+  }
+
 }
