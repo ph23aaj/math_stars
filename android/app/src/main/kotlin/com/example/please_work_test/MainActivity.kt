@@ -1,4 +1,4 @@
-package com.example.please_work_test
+package com.mathstars.app
 
 import io.flutter.embedding.android.FlutterActivity
 

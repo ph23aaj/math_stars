@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAlVawoWCqgi_VFK74KIFCFa1nTe8yBiWE',
-    appId: '1:832646305206:android:4f6d887c5c22281f501d17',
+    appId: '1:832646305206:android:0426028dae3c7b18501d17',
     messagingSenderId: '832646305206',
     projectId: 'mathstars-e6be2',
     storageBucket: 'mathstars-e6be2.firebasestorage.app',
@@ -78,11 +78,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyAnWiyWvaINJifdsiAawLROXZCO1oxaad0',
-    appId: '1:832646305206:web:c583feac38f4a44e501d17',
+    appId: '1:832646305206:web:e6d4f5f862297589501d17',
     messagingSenderId: '832646305206',
     projectId: 'mathstars-e6be2',
     authDomain: 'mathstars-e6be2.firebaseapp.com',
     storageBucket: 'mathstars-e6be2.firebasestorage.app',
-    measurementId: 'G-V24BC3LSFD',
+    measurementId: 'G-ZHSXQZ72Y0',
   );
+
 }
