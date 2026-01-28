@@ -25,7 +25,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const Spacer(),
                   const Text(
-                    'Maths Stars',
+                    'Maths Starss',
                     style: TextStyle(
                       fontSize: 45,
                       fontWeight: FontWeight.bold,
