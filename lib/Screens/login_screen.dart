@@ -117,6 +117,7 @@ class _MathsStarsLoginScreenState extends State<MathsStarsLoginScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: _usernameController,
+                textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.grey.shade200,
@@ -137,6 +138,7 @@ class _MathsStarsLoginScreenState extends State<MathsStarsLoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: true,
+                onSubmitted: (_) => _isLoading ? null : _login(),
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.grey.shade200,

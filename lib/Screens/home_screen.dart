@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'game_selection.dart';
+import 'package:math_stars/Services/auth-service.dart';
+
 
 
 class HomeScreen extends StatelessWidget {
@@ -114,15 +116,18 @@ class HomeScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () {
-                    // Clear stack and go back to login
+                  onPressed: () async {
+                    await AuthService().signOut();
+
+                    if (!context.mounted) return;
+
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (_) => const MathsStarsLoginScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const MathsStarsLoginScreen()),
                           (route) => false,
                     );
                   },
+
+
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 26),
                     shape: const StadiumBorder(),
