@@ -37,6 +37,12 @@ class AuthService {
     required String className,
   }) async {
     final usernameLower = _normaliseUsername(username);
+    final classId = _normaliseClassName(className);
+
+    final classDoc = await _db.collection('classes').doc(classId).get();
+    if (!classDoc.exists) {
+      throw Exception('That class does not exist. Ask your teacher for the exact class name.');
+    }
 
     if (usernameLower.isEmpty) {
       throw Exception('Username cannot be empty.');
@@ -81,8 +87,10 @@ class AuthService {
         'firstName': firstName.trim(),
         'lastName': lastName.trim(),
         'className': className.trim(),
+        'classId': classId,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
 
       batch.set(_db.collection('progress').doc(uid), {
         'totalGamesPlayed': 0,
@@ -234,5 +242,96 @@ class AuthService {
       rethrow;
     }
   }
+
+
+  Future<UserCredential> signUpTeacherWithUsername({
+    required String username,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String className,
+  }) async {
+    final usernameLower = _normaliseUsername(username);
+    final classNameClean = className.trim();
+    final classId = _normaliseClassName(classNameClean);
+    final classDoc = _db.collection('classes').doc(classId);
+
+
+
+    if (usernameLower.isEmpty) throw Exception('Username cannot be empty.');
+    if (firstName.trim().isEmpty) throw Exception('First name cannot be empty.');
+    if (lastName.trim().isEmpty) throw Exception('Last name cannot be empty.');
+    if (classNameClean.isEmpty) throw Exception('Class name cannot be empty.');
+    if (password.length < 4) throw Exception('Password/PIN must be at least 4 characters.');
+
+    final usernameDoc = _db.collection('usernames').doc(usernameLower);
+
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(usernameDoc);
+      if (snap.exists) throw Exception('That username is already taken.');
+      tx.set(usernameDoc, {
+        'reserved': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    try {
+      final email = _emailForUsername(usernameLower);
+
+      final existing = await classDoc.get();
+      if (existing.exists) {
+        throw Exception('That class name already exists. Choose another.');
+      }
+
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final uid = cred.user!.uid;
+
+      final batch = _db.batch();
+
+      batch.set(_db.collection('users').doc(uid), {
+        'role': 'teacher',
+        'username': usernameLower,
+        'classId': classId,
+        'className': classNameClean,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      batch.set(_db.collection('teachers').doc(uid), {
+        'firstName': firstName.trim(),
+        'lastName': lastName.trim(),
+        'classId': classId,
+        'className': classNameClean,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      batch.set(classDoc, {
+        'className': classNameClean,
+        'classId': classId,
+        'teacherUid': uid,
+        'teacherUsername': usernameLower,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+
+      batch.set(usernameDoc, {
+        'uid': uid,
+        'role': 'teacher',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
+      return cred;
+    } catch (e) {
+      await usernameDoc.delete().catchError((_) {});
+      rethrow;
+    }
+  }
+
+  String _normaliseClassName(String className) =>
+      className.trim().toLowerCase();
 
 }

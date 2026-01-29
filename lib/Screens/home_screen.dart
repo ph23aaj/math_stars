@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'game_selection.dart';
 import 'package:math_stars/Services/auth-service.dart';
+import 'teacher_dashboard_screen.dart';
 
 
 
@@ -111,6 +112,25 @@ class HomeScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 30),
+
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const TeacherDashboardScreen()),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 26),
+                    shape: const StadiumBorder(),
+                    side: const BorderSide(color: Colors.black, width: 1.5),
+                    foregroundColor: Colors.black,
+                  ),
+                  child: const Text('Teacher Dashboard'),
+                ),
+              ),
+
 
               // Log out
               SizedBox(
