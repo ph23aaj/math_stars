@@ -3,6 +3,7 @@ import 'login_screen.dart';
 import 'game_selection.dart';
 import 'package:math_stars/Services/auth-service.dart';
 import 'teacher_dashboard_screen.dart';
+import 'student_dashboard_screen.dart';
 
 
 
@@ -99,7 +100,12 @@ class HomeScreen extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () {
-                    // TODO: go to dashboard
+                    debugPrint('View Dashboard pressed');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const StudentDashboardScreen(),
+                      ),
+                    );
                   },
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 26),
@@ -110,6 +116,7 @@ class HomeScreen extends StatelessWidget {
                   child: const Text('View Dashboard'),
                 ),
               ),
+
 
               const SizedBox(height: 30),
 

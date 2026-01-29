@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../Services/progress_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+
 
 
 class GamePlayScreen extends StatefulWidget {
@@ -49,6 +53,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   int get correctAnswer => a + b;
 
+  int incorrect = 0;
+  bool _savingResult = false;
+
   @override
   void initState() {
     super.initState();
@@ -88,9 +95,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   void _handleTimeUp() {
-    // Time’s up counts as incorrect; move on.
+    setState(() => incorrect += 1);
     _goToNextQuestion(showMessage: "Time's up!");
   }
+
 
   void _pressDigit(int d) {
     setState(() {
@@ -116,9 +124,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       setState(() => score += 1);
       _goToNextQuestion(showMessage: 'Correct! +1');
     } else {
+      setState(() => incorrect += 1);
       _goToNextQuestion(showMessage: 'Incorrect');
     }
   }
+
 
   void _goToNextQuestion({required String showMessage}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -143,8 +153,42 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _startNewQuestion();
   }
 
-  void _finishGame() {
+  Future<void> _finishGame() async {
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    debugPrint('FINISH GAME uid=$uid score=$score incorrect=$incorrect level=${widget.level}');
+
+
     timer?.cancel();
+
+    if (_savingResult) return;
+    setState(() => _savingResult = true);
+
+    // Pick a stable gameId (important for dashboard grouping)
+    final String gameId = 'timed_addition'; // since game 1 is your addition game
+
+    try {
+      debugPrint('Saving progress…');
+      await ProgressService().recordGameResult(
+        gameId: gameId,
+        correct: score,
+        incorrect: incorrect,
+        level: widget.level,
+      );
+      debugPrint('Saved progress ✅');
+    } catch (e) {
+      debugPrint('SAVE FAILED ❌ $e');
+      // Don’t block the user – but do show the error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save progress: $e')),
+        );
+      }
+    }
+
+    if (!mounted) return;
+
+    setState(() => _savingResult = false);
 
     showDialog<void>(
       context: context,
@@ -164,6 +208,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       ),
     );
   }
+
 
   void _confirmExit() {
     timer?.cancel();
