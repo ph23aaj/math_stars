@@ -44,7 +44,7 @@ class StudentDashboardScreen extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              // Main content scroll (in case smaller phones)
+              // Main content scroll
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -53,7 +53,7 @@ class StudentDashboardScreen extends StatelessWidget {
 
                       const SizedBox(height: 18),
 
-                      // Grey placeholder bar (like your sketch)
+                      // Grey placeholder bar
                       Container(
                         height: 48,
                         width: 220,
