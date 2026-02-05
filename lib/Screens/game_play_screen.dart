@@ -17,6 +17,14 @@ class GamePlayScreen extends StatefulWidget {
   State<GamePlayScreen> createState() => _GamePlayScreenState();
 }
 
+class _Q {
+  final String id;
+  final int a;
+  final int b;
+  const _Q({required this.id, required this.a, required this.b});
+}
+
+
 class _GamePlayScreenState extends State<GamePlayScreen> {
   // --- Game config ---
   static const int totalQuestions = 5;
@@ -63,6 +71,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   DateTime? _questionStart;
   bool _saving = false;
 
+  final List<_Q> _queue = [];
+  _Q? _current;
+
+  int completedCorrectly = 0; // out of totalQuestions
+  int attempts = 0; // total attempts (including repeats)
+
+  final Map<String, int> _attemptCountByQuestionId = {}; // qid -> attempts
+
+
 
   @override
   void initState() {
@@ -83,7 +100,21 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       // If logging fails, we still allow play
       debugPrint('Failed to create game log: $e');
     }
+    _queue.clear();
+    completedCorrectly = 0;
+    attempts = 0;
+    _attemptCountByQuestionId.clear();
+
+// Create 5 questions (can repeat numbers; each has unique id)
+    for (int i = 0; i < totalQuestions; i++) {
+      final qa = rng.nextInt(12) + 1;
+      final qb = rng.nextInt(12) + 1;
+      _queue.add(_Q(id: 'q${i + 1}', a: qa, b: qb));
+    }
+
+    _current = _queue.removeAt(0);
     _startNewQuestion();
+
   }
 
 
@@ -96,12 +127,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   void _startNewQuestion() {
     timer?.cancel();
 
-    // Random numbers 1..12
-    a = rng.nextInt(12) + 1;
-    b = rng.nextInt(12) + 1;
+    final q = _current;
+    if (q == null) return;
+
+    a = q.a;
+    b = q.b;
 
     answer = '';
     remainingSeconds = secondsPerQuestion;
+
+    _questionStart = DateTime.now();
 
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -117,36 +152,89 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     });
 
     setState(() {});
-
-    questionStartTime = DateTime.now();
-
-    _questionStart = DateTime.now();
-
-
   }
 
-  void _handleTimeUp() {
-    setState(() => incorrect += 1);
+  Future<void> _submitAttempt({
+    required bool isCorrect,
+    required int? userAnswer,
+    required bool timedOut,
+    required String snack,
+  }) async {
+    final q = _current;
+    if (q == null) return;
 
+    // Update counters
+    attempts += 1;
+
+    if (isCorrect) {
+      setState(() {
+        score += 1; // optional, can remove and just use completedCorrectly
+        completedCorrectly += 1;
+      });
+    } else {
+      setState(() => incorrect += 1);
+    }
+
+    // Attempt number for this specific question
+    final attemptNo = (_attemptCountByQuestionId[q.id] ?? 0) + 1;
+    _attemptCountByQuestionId[q.id] = attemptNo;
+
+    // Log this attempt (each attempt is one entry)
     final now = DateTime.now();
     final timeTakenMs = _questionStart == null
-        ? secondsPerQuestion * 1000
+        ? 0
         : now.difference(_questionStart!).inMilliseconds;
 
     _questionLogs.add({
-      'a': a,
-      'b': b,
-      'correctAnswer': correctAnswer,
-      'userAnswer': null,
-      'isCorrect': false,
+      'questionId': q.id,
+      'attemptNo': attemptNo,
+      'a': q.a,
+      'b': q.b,
+      'correctAnswer': q.a + q.b,
+      'userAnswer': userAnswer,
+      'isCorrect': isCorrect,
       'timeTakenMs': timeTakenMs,
-      'timedOut': true,
+      'timedOut': timedOut,
     });
 
-    _saveQuestionUpdate(); // update partial log
+    // Update partial log in Firestore
+    await _saveQuestionUpdate();
 
-    _goToNextQuestion(showMessage: "Time's up!");
+    // UI feedback
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(snack), duration: const Duration(milliseconds: 700)),
+      );
+    }
+
+    // Move to next
+    timer?.cancel();
+
+    if (completedCorrectly >= totalQuestions) {
+      await _finishGame();
+      return;
+    }
+
+    // If wrong: re-add this question to end of queue
+    if (!isCorrect) {
+      _queue.add(q);
+    }
+
+    // Next question is front of queue
+    _current = _queue.removeAt(0);
+    _startNewQuestion();
   }
+
+
+  void _handleTimeUp() {
+    _submitAttempt(
+      isCorrect: false,
+      userAnswer: null,
+      timedOut: true,
+      snack: "Time's up!",
+    );
+  }
+
 
 
 
@@ -170,31 +258,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     final int? parsed = int.tryParse(answer);
     final bool isCorrect = (parsed != null && parsed == correctAnswer);
 
-    if (isCorrect) {
-      setState(() => score += 1);
-    } else {
-      setState(() => incorrect += 1);
-    }
-
-    final now = DateTime.now();
-    final timeTakenMs = _questionStart == null
-        ? 0
-        : now.difference(_questionStart!).inMilliseconds;
-
-    _questionLogs.add({
-      'a': a,
-      'b': b,
-      'correctAnswer': correctAnswer,
-      'userAnswer': parsed,
-      'isCorrect': isCorrect,
-      'timeTakenMs': timeTakenMs,
-      'timedOut': false,
-    });
-
-    _saveQuestionUpdate(); // update partial log
-
-    _goToNextQuestion(showMessage: isCorrect ? 'Correct! +1' : 'Incorrect');
+    _submitAttempt(
+      isCorrect: isCorrect,
+      userAnswer: parsed,
+      timedOut: false,
+      snack: isCorrect ? 'Correct! +1' : 'Incorrect',
+    );
   }
+
 
   Future<void> _saveQuestionUpdate() async {
     final logId = _logId;
@@ -206,11 +277,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     try {
       await GameLogService().updateAfterQuestion(
         logId: logId,
-        questionIndex: questionIndex,
+        questionIndex: completedCorrectly + 1,
         correct: score,
         incorrect: incorrect,
         allQuestionsSoFar: List<Map<String, dynamic>>.from(_questionLogs),
       );
+
 
     } catch (e) {
       debugPrint('Failed to update game log: $e');
@@ -378,7 +450,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      '$score',
+                      'Completed $completedCorrectly / $totalQuestions',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
