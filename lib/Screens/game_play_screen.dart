@@ -19,9 +19,16 @@ class GamePlayScreen extends StatefulWidget {
 
 class _Q {
   final String id;
+  final int index; // 1..5 (original question number)
   final int a;
   final int b;
-  const _Q({required this.id, required this.a, required this.b});
+
+  const _Q({
+    required this.id,
+    required this.index,
+    required this.a,
+    required this.b,
+  });
 }
 
 
@@ -59,6 +66,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   int incorrect = 0;
 
+  bool _ready = false;
+
   final List<Map<String, dynamic>> questionLogs = [];
   DateTime? questionStartTime;
   DateTime? gameStartTime;
@@ -88,7 +97,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   Future<void> _initLogAndStart() async {
-    // create a log doc at the start (so partial sessions exist)
+    _ready = false;
+
     try {
       _logId = await GameLogService().createLog(
         gameId: _gameId,
@@ -97,26 +107,27 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         totalQuestions: totalQuestions,
       );
     } catch (e) {
-      // If logging fails, we still allow play
       debugPrint('Failed to create game log: $e');
     }
+
     _queue.clear();
-    completedCorrectly = 0;
-    attempts = 0;
+    score = 0;
+    incorrect = 0;
+
+    _questionLogs.clear();
     _attemptCountByQuestionId.clear();
 
-// Create 5 questions (can repeat numbers; each has unique id)
     for (int i = 0; i < totalQuestions; i++) {
       final qa = rng.nextInt(12) + 1;
       final qb = rng.nextInt(12) + 1;
-      _queue.add(_Q(id: 'q${i + 1}', a: qa, b: qb));
+      _queue.add(_Q(id: 'q${i + 1}', index: i + 1, a: qa, b: qb));
     }
 
     _current = _queue.removeAt(0);
+
+    setState(() => _ready = true);
     _startNewQuestion();
-
   }
-
 
   @override
   void dispose() {
@@ -135,7 +146,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
     answer = '';
     remainingSeconds = secondsPerQuestion;
-
     _questionStart = DateTime.now();
 
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -163,30 +173,33 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     final q = _current;
     if (q == null) return;
 
-    // Update counters
-    attempts += 1;
-
-    if (isCorrect) {
-      setState(() {
-        score += 1; // optional, can remove and just use completedCorrectly
-        completedCorrectly += 1;
-      });
-    } else {
-      setState(() => incorrect += 1);
-    }
+    timer?.cancel();
 
     // Attempt number for this specific question
     final attemptNo = (_attemptCountByQuestionId[q.id] ?? 0) + 1;
     _attemptCountByQuestionId[q.id] = attemptNo;
 
-    // Log this attempt (each attempt is one entry)
     final now = DateTime.now();
     final timeTakenMs = _questionStart == null
         ? 0
         : now.difference(_questionStart!).inMilliseconds;
 
+    // Track counters
+    setState(() {
+      attempts += 1;
+
+      if (isCorrect) {
+        score += 1;
+        completedCorrectly += 1;
+      } else {
+        incorrect += 1;
+      }
+    });
+
+    // Log attempt
     _questionLogs.add({
       'questionId': q.id,
+      'questionIndex': q.index, // IMPORTANT: original question number
       'attemptNo': attemptNo,
       'a': q.a,
       'b': q.b,
@@ -197,33 +210,39 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       'timedOut': timedOut,
     });
 
-    // Update partial log in Firestore
     await _saveQuestionUpdate();
 
-    // UI feedback
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(snack), duration: const Duration(milliseconds: 700)),
       );
     }
 
-    // Move to next
-    timer?.cancel();
+    // If incorrect, re-add this same question to end
+    if (!isCorrect) {
+      _queue.add(q);
+    }
 
+    // Finished when all 5 are eventually correct
     if (completedCorrectly >= totalQuestions) {
       await _finishGame();
       return;
     }
 
-    // If wrong: re-add this question to end of queue
-    if (!isCorrect) {
-      _queue.add(q);
+    // Move to next question
+    if (_queue.isEmpty) {
+      // This shouldn't happen unless something goes wrong
+      await _finishGame();
+      return;
     }
 
-    // Next question is front of queue
-    _current = _queue.removeAt(0);
+    setState(() {
+      _current = _queue.removeAt(0);
+    });
+
     _startNewQuestion();
   }
+
 
 
   void _handleTimeUp() {
@@ -402,6 +421,18 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   Widget build(BuildContext context) {
     final String timeText = _formatTime(remainingSeconds);
 
+    if (!_ready || _current == null) {
+      return const Scaffold(
+        body: SafeArea(
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final q = _current!;
+    final displayIndex = q.index;
+
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -450,7 +481,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      'Completed $completedCorrectly / $totalQuestions',
+                      '$score',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -478,7 +509,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Question $questionIndex / $totalQuestions',
+                          'Question $displayIndex / $totalQuestions',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
