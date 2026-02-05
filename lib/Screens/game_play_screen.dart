@@ -56,10 +56,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   int incorrect = 0;
   bool _savingResult = false;
 
+  final List<Map<String, dynamic>> questionLogs = [];
+  DateTime? questionStartTime;
+  DateTime? gameStartTime;
+
+
   @override
   void initState() {
     super.initState();
     _startNewQuestion();
+    gameStartTime = DateTime.now();
+
   }
 
   @override
@@ -92,6 +99,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     });
 
     setState(() {});
+
+    questionStartTime = DateTime.now();
+
   }
 
   void _handleTimeUp() {
