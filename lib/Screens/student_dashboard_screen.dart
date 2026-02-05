@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'student_game_logs_list.dart';
+import 'student_game_log_detail_screen.dart';
 
 class StudentDashboardScreen extends StatelessWidget {
   const StudentDashboardScreen({super.key});
@@ -82,6 +84,28 @@ class StudentDashboardScreen extends StatelessWidget {
                       const SizedBox(height: 10),
 
                       _TotalResultsCard(uid: uid),
+
+                      const SizedBox(height: 18),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Past 15 games',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      StudentGameLogsList(
+                        uid: uid,
+                        onOpenLog: (logId) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => StudentGameLogDetailScreen(uid: uid, logId: logId),
+                            ),
+                          );
+                        },
+                      ),
+
                     ],
                   ),
                 ),

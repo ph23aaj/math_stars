@@ -1,11 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../Services/progress_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
-
-
+import '../Services/game_log_service.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final int level; // 1, 2, 3
@@ -54,20 +50,42 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   int get correctAnswer => a + b;
 
   int incorrect = 0;
-  bool _savingResult = false;
 
   final List<Map<String, dynamic>> questionLogs = [];
   DateTime? questionStartTime;
   DateTime? gameStartTime;
 
+  static const String _gameId = 'timed_addition';
+  static const String _gameName = 'Timed Addition';
+
+  String? _logId;
+  final List<Map<String, dynamic>> _questionLogs = [];
+  DateTime? _questionStart;
+  bool _saving = false;
+
 
   @override
   void initState() {
     super.initState();
-    _startNewQuestion();
-    gameStartTime = DateTime.now();
-
+    _initLogAndStart();
   }
+
+  Future<void> _initLogAndStart() async {
+    // create a log doc at the start (so partial sessions exist)
+    try {
+      _logId = await GameLogService().createLog(
+        gameId: _gameId,
+        gameName: _gameName,
+        level: widget.level,
+        totalQuestions: totalQuestions,
+      );
+    } catch (e) {
+      // If logging fails, we still allow play
+      debugPrint('Failed to create game log: $e');
+    }
+    _startNewQuestion();
+  }
+
 
   @override
   void dispose() {
@@ -102,12 +120,34 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
     questionStartTime = DateTime.now();
 
+    _questionStart = DateTime.now();
+
+
   }
 
   void _handleTimeUp() {
     setState(() => incorrect += 1);
+
+    final now = DateTime.now();
+    final timeTakenMs = _questionStart == null
+        ? secondsPerQuestion * 1000
+        : now.difference(_questionStart!).inMilliseconds;
+
+    _questionLogs.add({
+      'a': a,
+      'b': b,
+      'correctAnswer': correctAnswer,
+      'userAnswer': null,
+      'isCorrect': false,
+      'timeTakenMs': timeTakenMs,
+      'timedOut': true,
+    });
+
+    _saveQuestionUpdate(); // update partial log
+
     _goToNextQuestion(showMessage: "Time's up!");
   }
+
 
 
   void _pressDigit(int d) {
@@ -132,12 +172,53 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
     if (isCorrect) {
       setState(() => score += 1);
-      _goToNextQuestion(showMessage: 'Correct! +1');
     } else {
       setState(() => incorrect += 1);
-      _goToNextQuestion(showMessage: 'Incorrect');
+    }
+
+    final now = DateTime.now();
+    final timeTakenMs = _questionStart == null
+        ? 0
+        : now.difference(_questionStart!).inMilliseconds;
+
+    _questionLogs.add({
+      'a': a,
+      'b': b,
+      'correctAnswer': correctAnswer,
+      'userAnswer': parsed,
+      'isCorrect': isCorrect,
+      'timeTakenMs': timeTakenMs,
+      'timedOut': false,
+    });
+
+    _saveQuestionUpdate(); // update partial log
+
+    _goToNextQuestion(showMessage: isCorrect ? 'Correct! +1' : 'Incorrect');
+  }
+
+  Future<void> _saveQuestionUpdate() async {
+    final logId = _logId;
+    if (logId == null) return; // logging not available
+
+    if (_saving) return;
+    _saving = true;
+
+    try {
+      await GameLogService().updateAfterQuestion(
+        logId: logId,
+        questionIndex: questionIndex,
+        correct: score,
+        incorrect: incorrect,
+        allQuestionsSoFar: List<Map<String, dynamic>>.from(_questionLogs),
+      );
+
+    } catch (e) {
+      debugPrint('Failed to update game log: $e');
+    } finally {
+      _saving = false;
     }
   }
+
 
 
   void _goToNextQuestion({required String showMessage}) {
@@ -164,41 +245,22 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   Future<void> _finishGame() async {
-
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    debugPrint('FINISH GAME uid=$uid score=$score incorrect=$incorrect level=${widget.level}');
-
-
     timer?.cancel();
 
-    if (_savingResult) return;
-    setState(() => _savingResult = true);
-
-    // Pick a stable gameId (important for dashboard grouping)
-    final String gameId = 'timed_addition'; // since game 1 is your addition game
-
-    try {
-      debugPrint('Saving progress…');
-      await ProgressService().recordGameResult(
-        gameId: gameId,
-        correct: score,
-        incorrect: incorrect,
-        level: widget.level,
-      );
-      debugPrint('Saved progress ✅');
-    } catch (e) {
-      debugPrint('SAVE FAILED ❌ $e');
-      // Don’t block the user – but do show the error
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not save progress: $e')),
+    final logId = _logId;
+    if (logId != null) {
+      try {
+        await GameLogService().markCompleted(
+          logId: logId,
+          correct: score,
+          incorrect: incorrect,
         );
+      } catch (e) {
+        debugPrint('Failed to mark completed: $e');
       }
     }
 
     if (!mounted) return;
-
-    setState(() => _savingResult = false);
 
     showDialog<void>(
       context: context,
@@ -209,8 +271,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // close dialog
-              Navigator.pop(context); // exit game screen
+              Navigator.pop(context);
+              Navigator.pop(context);
             },
             child: const Text('OK'),
           ),
@@ -218,6 +280,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       ),
     );
   }
+
 
 
   void _confirmExit() {
@@ -230,19 +293,27 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         content: const Text('Your current progress will be lost.'),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context); // close dialog
-              _startNewQuestion(); // resume (restart current question)
-            },
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // close dialog
-              Navigator.pop(context); // leave screen
+
+              final logId = _logId;
+              if (logId != null) {
+                try {
+                  await GameLogService().markAbandoned(
+                    logId: logId,
+                    correct: score,
+                    incorrect: incorrect,
+                  );
+                } catch (e) {
+                  debugPrint('Failed to mark abandoned: $e');
+                }
+              }
+
+              if (mounted) Navigator.pop(context); // leave screen
             },
             child: const Text('Exit'),
           ),
+
         ],
       ),
     );
