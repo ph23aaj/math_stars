@@ -51,28 +51,33 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   bool get _isAddition => widget.game == 1;
   bool get _isSubtraction => widget.game == 2;
   bool get _isMultiplication => widget.game == 3;
+  bool get _isDivision => widget.game == 4;
 
   String get _gameId {
     if (_isSubtraction) return 'timed_subtraction';
     if (_isMultiplication) return 'timed_multiplication';
+    if (_isDivision) return 'timed_division';
     return 'timed_addition';
   }
 
   String get _gameName {
     if (_isSubtraction) return 'Timed Subtraction';
     if (_isMultiplication) return 'Timed Multiplication';
+    if (_isDivision) return 'Timed Division';
     return 'Timed Addition';
   }
 
   String get _opSymbol {
     if (_isSubtraction) return '-';
     if (_isMultiplication) return '×';
+    if (_isDivision) return '÷';
     return '+';
   }
 
   int _computeAnswer(int a, int b) {
     if (_isSubtraction) return a - b;
     if (_isMultiplication) return a * b;
+    if (_isDivision) return a ~/ b;
     return a + b;
   }
 
@@ -162,6 +167,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
           qa = qb;
           qb = tmp;
         }
+      } else if (_isDivision) {
+        // Division from 12x12 table:
+        // pick x,y in 1..12 then ask (x*y) ÷ y
+        final x = rng.nextInt(12) + 1;
+        final y = rng.nextInt(12) + 1;
+        qa = x * y; // dividend (1..144)
+        qb = y;     // divisor (1..12)
       } else if (_isMultiplication) {
         // Multiplication 1..12
         qa = rng.nextInt(12) + 1;

@@ -123,6 +123,16 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                           ),
                         );
                       }
+                      else if (selectedGame == 4){
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => GamePlayScreen(
+                              level: selectedLevel!,
+                              game: selectedGame!,
+                            ),
+                          ),
+                        );
+                      }
                       else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
