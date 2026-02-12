@@ -5,7 +5,7 @@ import '../Services/game_log_service.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final int level; // 1, 2, 3
-  final int game;  // 1..n
+  final int game;  // 1 = addition, 2 = subtraction
 
   const GamePlayScreen({
     super.key,
@@ -19,7 +19,7 @@ class GamePlayScreen extends StatefulWidget {
 
 class _Q {
   final String id;
-  final int index; // 1..5 (original question number)
+  final int index; // original question number 1..5
   final int a;
   final int b;
 
@@ -31,9 +31,7 @@ class _Q {
   });
 }
 
-
 class _GamePlayScreenState extends State<GamePlayScreen> {
-  // --- Game config ---
   static const int totalQuestions = 5;
 
   int get secondsPerQuestion {
@@ -49,46 +47,44 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
   }
 
-  // --- State ---
+  // Game mapping
+  bool get _isSubtraction => widget.game == 2;
+
+  String get _gameId => _isSubtraction ? 'timed_subtraction' : 'timed_addition';
+  String get _gameName => _isSubtraction ? 'Timed Subtraction' : 'Timed Addition';
+  String get _opSymbol => _isSubtraction ? '-' : '+';
+
+  int _computeAnswer(int a, int b) => _isSubtraction ? (a - b) : (a + b);
+
+
   final Random rng = Random();
   Timer? timer;
 
-  int questionIndex = 1; // 1..5
-  int remainingSeconds = 0;
-
-  int score = 0;
-  String answer = '';
-
-  late int a;
-  late int b;
-
-  int get correctAnswer => a + b;
-
-  int incorrect = 0;
-
   bool _ready = false;
 
-  final List<Map<String, dynamic>> questionLogs = [];
-  DateTime? questionStartTime;
-  DateTime? gameStartTime;
+  int remainingSeconds = 0;
+  String answer = '';
 
-  static const String _gameId = 'timed_addition';
-  static const String _gameName = 'Timed Addition';
+  // Current displayed values
+  int a = 1;
+  int b = 1;
+  int get correctAnswer => _computeAnswer(a, b);
 
-  String? _logId;
-  final List<Map<String, dynamic>> _questionLogs = [];
-  DateTime? _questionStart;
-  bool _saving = false;
+  // Counters
+  int score = 0; // number solved correctly (final solves)
+  int incorrect = 0; // number of incorrect attempts
+  int completedCorrectly = 0; // out of totalQuestions (base questions)
 
+  // Queue repeats wrong questions at end
   final List<_Q> _queue = [];
   _Q? _current;
 
-  int completedCorrectly = 0; // out of totalQuestions
-  int attempts = 0; // total attempts (including repeats)
-
-  final Map<String, int> _attemptCountByQuestionId = {}; // qid -> attempts
-
-
+  // Timing/logging
+  DateTime? _questionStart;
+  String? _logId;
+  bool _saving = false;
+  final List<Map<String, dynamic>> _questionLogs = [];
+  final Map<String, int> _attemptCountByQuestionId = {};
 
   @override
   void initState() {
@@ -96,9 +92,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _initLogAndStart();
   }
 
-  Future<void> _initLogAndStart() async {
-    _ready = false;
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
 
+  Future<void> _initLogAndStart() async {
+    setState(() => _ready = false);
+
+    // Create a partial log at the start (so abandoned sessions exist)
     try {
       _logId = await GameLogService().createLog(
         gameId: _gameId,
@@ -108,18 +111,43 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       );
     } catch (e) {
       debugPrint('Failed to create game log: $e');
+      _logId = null;
     }
 
-    _queue.clear();
+    // Reset state
+    timer?.cancel();
+    remainingSeconds = secondsPerQuestion;
+    answer = '';
     score = 0;
     incorrect = 0;
+    completedCorrectly = 0;
+
+    _queue.clear();
+    _current = null;
 
     _questionLogs.clear();
     _attemptCountByQuestionId.clear();
 
+    // Generate base questions
     for (int i = 0; i < totalQuestions; i++) {
-      final qa = rng.nextInt(12) + 1;
-      final qb = rng.nextInt(12) + 1;
+      int qa;
+      int qb;
+
+      if (_isSubtraction) {
+        // 1..24, keep non-negative (a >= b)
+        qa = rng.nextInt(24) + 1;
+        qb = rng.nextInt(24) + 1;
+        if (qb > qa) {
+          final tmp = qa;
+          qa = qb;
+          qb = tmp;
+        }
+      } else {
+        // Addition 1..12 (as before)
+        qa = rng.nextInt(12) + 1;
+        qb = rng.nextInt(12) + 1;
+      }
+
       _queue.add(_Q(id: 'q${i + 1}', index: i + 1, a: qa, b: qb));
     }
 
@@ -129,18 +157,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _startNewQuestion();
   }
 
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
-  }
-
   void _startNewQuestion() {
     timer?.cancel();
 
     final q = _current;
     if (q == null) return;
 
+    // Load question numbers into display variables
     a = q.a;
     b = q.b;
 
@@ -148,12 +171,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     remainingSeconds = secondsPerQuestion;
     _questionStart = DateTime.now();
 
+    // Start countdown
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
 
-      setState(() {
-        remainingSeconds--;
-      });
+      setState(() => remainingSeconds--);
 
       if (remainingSeconds <= 0) {
         timer?.cancel();
@@ -161,107 +183,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       }
     });
 
-    setState(() {});
+    setState(() {}); // refresh UI
   }
-
-  Future<void> _submitAttempt({
-    required bool isCorrect,
-    required int? userAnswer,
-    required bool timedOut,
-    required String snack,
-  }) async {
-    final q = _current;
-    if (q == null) return;
-
-    timer?.cancel();
-
-    // Attempt number for this specific question
-    final attemptNo = (_attemptCountByQuestionId[q.id] ?? 0) + 1;
-    _attemptCountByQuestionId[q.id] = attemptNo;
-
-    final now = DateTime.now();
-    final timeTakenMs = _questionStart == null
-        ? 0
-        : now.difference(_questionStart!).inMilliseconds;
-
-    // Track counters
-    setState(() {
-      attempts += 1;
-
-      if (isCorrect) {
-        score += 1;
-        completedCorrectly += 1;
-      } else {
-        incorrect += 1;
-      }
-    });
-
-    // Log attempt
-    _questionLogs.add({
-      'questionId': q.id,
-      'questionIndex': q.index, // IMPORTANT: original question number
-      'attemptNo': attemptNo,
-      'a': q.a,
-      'b': q.b,
-      'correctAnswer': q.a + q.b,
-      'userAnswer': userAnswer,
-      'isCorrect': isCorrect,
-      'timeTakenMs': timeTakenMs,
-      'timedOut': timedOut,
-    });
-
-    await _saveQuestionUpdate();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(snack), duration: const Duration(milliseconds: 700)),
-      );
-    }
-
-    // If incorrect, re-add this same question to end
-    if (!isCorrect) {
-      _queue.add(q);
-    }
-
-    // Finished when all 5 are eventually correct
-    if (completedCorrectly >= totalQuestions) {
-      await _finishGame();
-      return;
-    }
-
-    // Move to next question
-    if (_queue.isEmpty) {
-      // This shouldn't happen unless something goes wrong
-      await _finishGame();
-      return;
-    }
-
-    setState(() {
-      _current = _queue.removeAt(0);
-    });
-
-    _startNewQuestion();
-  }
-
-
-
-  void _handleTimeUp() {
-    _submitAttempt(
-      isCorrect: false,
-      userAnswer: null,
-      timedOut: true,
-      snack: "Time's up!",
-    );
-  }
-
-
-
 
   void _pressDigit(int d) {
     setState(() {
-      if (answer.length < 6) {
-        answer += d.toString();
-      }
+      if (answer.length < 6) answer += d.toString();
     });
   }
 
@@ -285,10 +212,94 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
   }
 
+  void _handleTimeUp() {
+    _submitAttempt(
+      isCorrect: false,
+      userAnswer: null,
+      timedOut: true,
+      snack: "Time's up!",
+    );
+  }
+
+  Future<void> _submitAttempt({
+    required bool isCorrect,
+    required int? userAnswer,
+    required bool timedOut,
+    required String snack,
+  }) async {
+    final q = _current;
+    if (q == null) return;
+
+    timer?.cancel();
+
+    // Attempt number for this specific base question
+    final attemptNo = (_attemptCountByQuestionId[q.id] ?? 0) + 1;
+    _attemptCountByQuestionId[q.id] = attemptNo;
+
+    final now = DateTime.now();
+    final timeTakenMs = _questionStart == null
+        ? 0
+        : now.difference(_questionStart!).inMilliseconds;
+
+    // Update counters
+    if (isCorrect) {
+      score += 1;
+      completedCorrectly += 1;
+    } else {
+      incorrect += 1;
+    }
+
+    // Add attempt log entry
+    _questionLogs.add({
+      'questionId': q.id,
+      'questionIndex': q.index, // original question number (1..5)
+      'attemptNo': attemptNo,
+      'a': q.a,
+      'b': q.b,
+      'operator': _opSymbol,
+      'correctAnswer': _computeAnswer(q.a, q.b),
+      'userAnswer': userAnswer,
+      'isCorrect': isCorrect,
+      'timeTakenMs': timeTakenMs,
+      'timedOut': timedOut,
+    });
+
+    await _saveQuestionUpdate();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(snack),
+          duration: const Duration(milliseconds: 700),
+        ),
+      );
+    }
+
+    // If wrong, repeat it later by adding to end of queue
+    if (!isCorrect) {
+      _queue.add(q);
+    }
+
+    // Finish once all 5 base questions have been solved correctly
+    if (completedCorrectly >= totalQuestions) {
+      await _finishGame();
+      return;
+    }
+
+    // Next question
+    if (_queue.isEmpty) {
+      await _finishGame();
+      return;
+    }
+    _current = _queue.removeAt(0);
+
+    setState(() {});
+    _startNewQuestion();
+  }
 
   Future<void> _saveQuestionUpdate() async {
     final logId = _logId;
-    if (logId == null) return; // logging not available
+    if (logId == null) return;
 
     if (_saving) return;
     _saving = true;
@@ -301,8 +312,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         incorrect: incorrect,
         allQuestionsSoFar: List<Map<String, dynamic>>.from(_questionLogs),
       );
-
-
     } catch (e) {
       debugPrint('Failed to update game log: $e');
     } finally {
@@ -310,30 +319,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
   }
 
-
-
-  void _goToNextQuestion({required String showMessage}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(showMessage),
-        duration: const Duration(milliseconds: 700),
-      ),
-    );
-
-    // Stop timer for this question
-    timer?.cancel();
-
-    if (questionIndex >= totalQuestions) {
-      _finishGame();
-      return;
-    }
-
-    setState(() {
-      questionIndex++;
-    });
-
-    _startNewQuestion();
-  }
 
   Future<void> _finishGame() async {
     timer?.cancel();
@@ -362,8 +347,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.pop(context); // close dialog
+              Navigator.pop(context); // back to selection for now
             },
             child: const Text('OK'),
           ),
@@ -371,8 +356,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       ),
     );
   }
-
-
 
   void _confirmExit() {
     timer?.cancel();
@@ -384,8 +367,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         content: const Text('Your current progress will be lost.'),
         actions: [
           TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _startNewQuestion(); // resume current question
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
             onPressed: () async {
-              Navigator.pop(context); // close dialog
+              Navigator.pop(context);
 
               final logId = _logId;
               if (logId != null) {
@@ -400,11 +390,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                 }
               }
 
-              if (mounted) Navigator.pop(context); // leave screen
+              if (mounted) Navigator.pop(context);
             },
             child: const Text('Exit'),
           ),
-
         ],
       ),
     );
@@ -419,19 +408,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String timeText = _formatTime(remainingSeconds);
-
     if (!_ready || _current == null) {
       return const Scaffold(
-        body: SafeArea(
-          child: Center(child: CircularProgressIndicator()),
-        ),
+        body: SafeArea(child: Center(child: CircularProgressIndicator())),
       );
     }
 
-    final q = _current!;
-    final displayIndex = q.index;
-
+    final qIndex = _current!.index; // original 1..5
+    final timeText = _formatTime(remainingSeconds);
 
     return Scaffold(
       body: SafeArea(
@@ -442,14 +426,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  // X button to exit
                   IconButton(
                     onPressed: _confirmExit,
                     icon: const Icon(Icons.close),
                   ),
                   const SizedBox(width: 8),
 
-                  // Timer pill
                   Expanded(
                     child: Container(
                       height: 34,
@@ -509,7 +491,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Question $displayIndex / $totalQuestions',
+                          'Question $qIndex / $totalQuestions',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
@@ -517,7 +499,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                         ),
                         const SizedBox(height: 18),
                         Text(
-                          '$a + $b = ?',
+                          '$a $_opSymbol $b = ?',
                           style: const TextStyle(
                             fontSize: 42,
                             fontWeight: FontWeight.bold,
@@ -579,7 +561,6 @@ class _Keypad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 2 rows of 6 buttons like your mock-up
     return Column(
       children: [
         Row(

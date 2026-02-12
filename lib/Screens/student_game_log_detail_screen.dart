@@ -128,6 +128,9 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                 final bVal = first['b'];
                 final ca = first['correctAnswer'];
 
+                final op = (first['operator'] ?? '+').toString();
+                final originalIndex = (first['questionIndex'] ?? (qNumber)) as int;
+
                 final bool eventuallyCorrect =
                 list.any((x) => x['isCorrect'] == true);
 
@@ -143,7 +146,7 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                'Q$qNumber: $aVal + $bVal = $ca',
+                                'Q$originalIndex: $aVal $op $bVal = $ca',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,

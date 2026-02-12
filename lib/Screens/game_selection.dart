@@ -93,7 +93,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                 child: ElevatedButton(
                     onPressed: canPlay
                         ? () {
-                      if (selectedGame == 1) {
+                      if (selectedGame == 1){
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => GamePlayScreen(
@@ -102,7 +102,18 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                             ),
                           ),
                         );
-                      } else {
+                      }
+                      if (selectedGame == 2){
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => GamePlayScreen(
+                              level: selectedLevel!,
+                              game: selectedGame!,
+                            ),
+                          ),
+                        );
+                      }
+                      else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('That game is not implemented yet.'),
