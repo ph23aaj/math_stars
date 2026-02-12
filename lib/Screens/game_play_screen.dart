@@ -47,14 +47,34 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
   }
 
-  // Game mapping
+  // Game mapping: 1=addition, 2=subtraction, 3=multiplication
+  bool get _isAddition => widget.game == 1;
   bool get _isSubtraction => widget.game == 2;
+  bool get _isMultiplication => widget.game == 3;
 
-  String get _gameId => _isSubtraction ? 'timed_subtraction' : 'timed_addition';
-  String get _gameName => _isSubtraction ? 'Timed Subtraction' : 'Timed Addition';
-  String get _opSymbol => _isSubtraction ? '-' : '+';
+  String get _gameId {
+    if (_isSubtraction) return 'timed_subtraction';
+    if (_isMultiplication) return 'timed_multiplication';
+    return 'timed_addition';
+  }
 
-  int _computeAnswer(int a, int b) => _isSubtraction ? (a - b) : (a + b);
+  String get _gameName {
+    if (_isSubtraction) return 'Timed Subtraction';
+    if (_isMultiplication) return 'Timed Multiplication';
+    return 'Timed Addition';
+  }
+
+  String get _opSymbol {
+    if (_isSubtraction) return '-';
+    if (_isMultiplication) return '×';
+    return '+';
+  }
+
+  int _computeAnswer(int a, int b) {
+    if (_isSubtraction) return a - b;
+    if (_isMultiplication) return a * b;
+    return a + b;
+  }
 
 
   final Random rng = Random();
@@ -142,8 +162,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
           qa = qb;
           qb = tmp;
         }
+      } else if (_isMultiplication) {
+        // Multiplication 1..12
+        qa = rng.nextInt(12) + 1;
+        qb = rng.nextInt(12) + 1;
       } else {
-        // Addition 1..12 (as before)
+        // Addition 1..12
         qa = rng.nextInt(12) + 1;
         qb = rng.nextInt(12) + 1;
       }

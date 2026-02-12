@@ -103,7 +103,17 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                           ),
                         );
                       }
-                      if (selectedGame == 2){
+                      else if (selectedGame == 2){
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => GamePlayScreen(
+                              level: selectedLevel!,
+                              game: selectedGame!,
+                            ),
+                          ),
+                        );
+                      }
+                      else if (selectedGame == 3){
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => GamePlayScreen(
