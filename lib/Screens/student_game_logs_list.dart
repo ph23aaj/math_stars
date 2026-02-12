@@ -17,7 +17,7 @@ class StudentGameLogsList extends StatelessWidget {
         .collection('students')
         .doc(uid)
         .collection('gameLogs')
-        .orderBy('updatedAt', descending: true)
+        .orderBy('startedAt', descending: true)
         .limit(15);
 
     return StreamBuilder<QuerySnapshot>(
@@ -53,13 +53,34 @@ class StudentGameLogsList extends StatelessWidget {
                 ? 'Abandoned'
                 : 'In progress';
 
+            // Prefer startedAt, fallback to updatedAt
+            DateTime? dt;
+            final startedAt = d['startedAt'];
+            final updatedAt = d['updatedAt'];
+
+            if (startedAt is Timestamp) dt = startedAt.toDate();
+            if (dt == null && updatedAt is Timestamp) dt = updatedAt.toDate();
+
+            String formatDateTime(DateTime? t) {
+              if (t == null) return 'Unknown date';
+              String two(int n) => n.toString().padLeft(2, '0');
+              return '${two(t.day)}/${two(t.month)}/${t.year} ${two(t.hour)}:${two(t.minute)}';
+            }
+
+            final dateText = formatDateTime(dt);
+
             return ListTile(
+              leading: CircleAvatar(
+                child: Text('${i + 1}'), // ✅ 1–15 numbering
+              ),
               title: Text('$gameName (Level $level)'),
-              subtitle: Text('$statusText • Score $correct/$total'),
+              subtitle: Text('$dateText\n$statusText • Score $correct/$total'),
+              isThreeLine: true,
               trailing: const Icon(Icons.chevron_right),
               onTap: () => onOpenLog(doc.id),
             );
           },
+
         );
       },
     );

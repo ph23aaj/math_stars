@@ -5,7 +5,7 @@ import '../Services/game_log_service.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final int level; // 1, 2, 3
-  final int game;  // 1..n (we’ll use 1 for addition)
+  final int game;  // 1..n
 
   const GamePlayScreen({
     super.key,

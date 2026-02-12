@@ -35,6 +35,19 @@ class StudentGameLogDetailScreen extends StatelessWidget {
           final correct = (d['correct'] ?? 0);
           final incorrect = (d['incorrect'] ?? 0);
 
+          DateTime? dt;
+          final startedAt = d['startedAt'];
+          final updatedAt = d['updatedAt'];
+
+          if (startedAt is Timestamp) dt = startedAt.toDate();
+          if (dt == null && updatedAt is Timestamp) dt = updatedAt.toDate();
+
+          String two(int n) => n.toString().padLeft(2, '0');
+          final dateText = dt == null
+              ? 'Unknown date'
+              : '${two(dt.day)}/${two(dt.month)}/${dt.year} ${two(dt.hour)}:${two(dt.minute)}';
+
+
           final raw = (d['questions'] as List?)?.cast<Map>() ?? [];
           final attempts = raw
               .map((e) => Map<String, dynamic>.from(e))
@@ -82,6 +95,8 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                 gameName,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 6),
+              Text('Played: $dateText'),
               const SizedBox(height: 6),
               Text('Level: $level • Status: ${prettyStatus(status)}'),
               const SizedBox(height: 6),

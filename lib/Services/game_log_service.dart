@@ -36,6 +36,9 @@ class GameLogService {
       'endedAt': null,
       'updatedAt': FieldValue.serverTimestamp(),
       'questions': <Map<String, dynamic>>[],
+      'startedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+
     });
 
     return doc.id;

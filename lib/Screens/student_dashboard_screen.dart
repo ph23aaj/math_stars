@@ -105,7 +105,7 @@ class StudentDashboardScreen extends StatelessWidget {
                           );
                         },
                       ),
-
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
