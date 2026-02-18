@@ -35,10 +35,10 @@ class StudentGameLogDetailScreen extends StatelessWidget {
           final correct = (d['correct'] ?? 0);
           final incorrect = (d['incorrect'] ?? 0);
 
+          // Date/time shown
           DateTime? dt;
           final startedAt = d['startedAt'];
           final updatedAt = d['updatedAt'];
-
           if (startedAt is Timestamp) dt = startedAt.toDate();
           if (dt == null && updatedAt is Timestamp) dt = updatedAt.toDate();
 
@@ -47,34 +47,11 @@ class StudentGameLogDetailScreen extends StatelessWidget {
               ? 'Unknown date'
               : '${two(dt.day)}/${two(dt.month)}/${dt.year} ${two(dt.hour)}:${two(dt.minute)}';
 
-
+          // Questions list (now one entry per question)
           final raw = (d['questions'] as List?)?.cast<Map>() ?? [];
-          final attempts = raw
+          final questions = raw
               .map((e) => Map<String, dynamic>.from(e))
               .toList(growable: false);
-
-          // ---- Group attempts by questionId (fallback groups if missing) ----
-          final Map<String, List<Map<String, dynamic>>> grouped = {};
-          for (int idx = 0; idx < attempts.length; idx++) {
-            final a = attempts[idx];
-            final qid = (a['questionId'] ?? 'unknown_$idx').toString();
-            grouped.putIfAbsent(qid, () => []);
-            grouped[qid]!.add(a);
-          }
-
-          // Sort groups by the earliest time they appeared (based on attemptNo if present)
-          final groupKeys = grouped.keys.toList()
-            ..sort((k1, k2) {
-              int firstAttemptNo(List<Map<String, dynamic>> list) {
-                final nums = list
-                    .map((x) => (x['attemptNo'] is int) ? x['attemptNo'] as int : 999999)
-                    .toList();
-                nums.sort();
-                return nums.isEmpty ? 999999 : nums.first;
-              }
-
-              return firstAttemptNo(grouped[k1]!) - firstAttemptNo(grouped[k2]!);
-            });
 
           String prettyStatus(String s) {
             switch (s) {
@@ -86,6 +63,15 @@ class StudentGameLogDetailScreen extends StatelessWidget {
               default:
                 return 'In progress';
             }
+          }
+
+          if (questions.isNotEmpty) {
+            // Sort by original question index if present
+            questions.sort((a, b) {
+              final ia = (a['questionIndex'] ?? 999999) as int;
+              final ib = (b['questionIndex'] ?? 999999) as int;
+              return ia.compareTo(ib);
+            });
           }
 
           return ListView(
@@ -109,31 +95,40 @@ class StudentGameLogDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
 
-              if (groupKeys.isEmpty)
-                const Text('No attempts recorded yet.'),
+              if (questions.isEmpty)
+                const Text('No questions recorded yet.'),
 
-              ...groupKeys.asMap().entries.map((entry) {
-                final qNumber = entry.key + 1; // 1..N groups
-                final qid = entry.value;
+              ...questions.map((q) {
+                final aVal = q['a'];
+                final bVal = q['b'];
+                final ca = q['correctAnswer'];
 
-                final list = grouped[qid]!..sort((a, b) {
-                  final aa = (a['attemptNo'] is int) ? a['attemptNo'] as int : 999999;
-                  final bb = (b['attemptNo'] is int) ? b['attemptNo'] as int : 999999;
-                  return aa.compareTo(bb);
-                });
+                final op = (q['operator'] ?? '+').toString();
+                final originalIndex = (q['questionIndex'] ?? 0) as int;
 
-                // Use the first attempt to get the question numbers
-                final first = list.first;
-                final aVal = first['a'];
-                final bVal = first['b'];
-                final ca = first['correctAnswer'];
+                final ua = q['userAnswer'];
+                final isCorrect = q['isCorrect'] == true;
+                final timedOut = q['timedOut'] == true;
+                final timeMs = (q['timeTakenMs'] ?? 0) as int;
 
-                final op = (first['operator'] ?? '+').toString();
-                final originalIndex = (first['questionIndex'] ?? (qNumber)) as int;
+                final timeSec = (timeMs / 1000).toStringAsFixed(1);
 
-                final firstAttempt = list.first;
-                final bool isCorrect = firstAttempt['isCorrect'] == true;
-                final bool timedOut = firstAttempt['timedOut'] == true;
+                final resultText = timedOut
+                    ? 'Timed out'
+                    : isCorrect
+                    ? 'Correct'
+                    : 'Incorrect';
+
+                final answerText = ua == null ? '—' : ua.toString();
+
+                IconData icon;
+                if (timedOut) {
+                  icon = Icons.timer_off;
+                } else if (isCorrect) {
+                  icon = Icons.check_circle;
+                } else {
+                  icon = Icons.cancel;
+                }
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -142,7 +137,6 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header row
                         Row(
                           children: [
                             Expanded(
@@ -156,64 +150,25 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             _Pill(
-                              text: timedOut
-                                  ? 'Timed out'
-                                  : isCorrect
-                                  ? 'Correct'
-                                  : 'Incorrect',
+                              text: resultText,
                               filled: isCorrect,
                             ),
-
                           ],
                         ),
-
                         const SizedBox(height: 10),
-
-                        // Attempts list
-                        ...list.map((attempt) {
-                          final attemptNo = attempt['attemptNo'];
-                          final ua = attempt['userAnswer'];
-                          final isCorrect = attempt['isCorrect'] == true;
-                          final timedOut = attempt['timedOut'] == true;
-                          final timeMs = (attempt['timeTakenMs'] ?? 0) as int;
-
-                          final timeSec = (timeMs / 1000).toStringAsFixed(1);
-
-                          final resultText = timedOut
-                              ? 'Timed out'
-                              : isCorrect
-                              ? 'Correct'
-                              : 'Incorrect';
-
-                          final answerText = ua == null ? '—' : ua.toString();
-
-                          IconData icon;
-                          if (timedOut) {
-                            icon = Icons.timer_off;
-                          } else if (isCorrect) {
-                            icon = Icons.check_circle;
-                          } else {
-                            icon = Icons.cancel;
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(icon, size: 18),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Attempt ${attemptNo ?? '?'}: '
-                                        'Answer $answerText • $resultText • ${timeSec}s',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ],
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(icon, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Answer $answerText • $resultText • ${timeSec}s',
+                                style: const TextStyle(fontSize: 14),
+                              ),
                             ),
-                          );
-                        }),
+                          ],
+                        ),
                       ],
                     ),
                   ),
