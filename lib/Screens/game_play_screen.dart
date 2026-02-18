@@ -34,18 +34,6 @@ class _Q {
 class _GamePlayScreenState extends State<GamePlayScreen> {
   static const int totalQuestions = 5;
 
-  int get secondsPerQuestion {
-    switch (widget.level) {
-      case 1:
-        return 45;
-      case 2:
-        return 30;
-      case 3:
-        return 15;
-      default:
-        return 30;
-    }
-  }
 
   // Game mapping: 1=addition, 2=subtraction, 3=multiplication
   bool get _isAddition => widget.game == 1;
@@ -54,17 +42,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   bool get _isDivision => widget.game == 4;
 
   String get _gameId {
-    if (_isSubtraction) return 'timed_subtraction';
-    if (_isMultiplication) return 'timed_multiplication';
-    if (_isDivision) return 'timed_division';
-    return 'timed_addition';
+    if (_isSubtraction) return 'subtraction';
+    if (_isMultiplication) return 'multiplication';
+    if (_isDivision) return 'division';
+    return 'addition';
   }
 
   String get _gameName {
-    if (_isSubtraction) return 'Timed Subtraction';
-    if (_isMultiplication) return 'Timed Multiplication';
-    if (_isDivision) return 'Timed Division';
-    return 'Timed Addition';
+    if (_isSubtraction) return 'Subtraction';
+    if (_isMultiplication) return 'Multiplication';
+    if (_isDivision) return 'Division';
+    return 'Addition';
   }
 
   String get _opSymbol {
@@ -81,13 +69,93 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     return a + b;
   }
 
+  // ---------------- Difficulty helpers ----------------
+
+// For multiplication/division progression
+  List<int> _tablesForLevel(int level) {
+    switch (level) {
+      case 1:
+        return [2, 5, 10];
+      case 2:
+        return [3, 4, 8];
+      case 3:
+        return [6, 7, 9, 11, 12];
+      default:
+        return [2, 5, 10];
+    }
+  }
+
+// Create 1 base question (index is 1..5)
+  _Q _makeQuestion(int index) {
+    // Addition
+    if (_isAddition) {
+      if (widget.level == 1) {
+        // within 10
+        final qa = rng.nextInt(11); // 0..10
+        final qb = rng.nextInt(11 - qa); // keeps sum <= 10
+        return _Q(id: 'q$index', index: index, a: qa, b: qb);
+      } else if (widget.level == 2) {
+        // within 20 (some crossing 10)
+        int qa = rng.nextInt(21); // 0..20
+        int qb = rng.nextInt(21 - qa);
+        return _Q(id: 'q$index', index: index, a: qa, b: qb);
+      } else {
+        // level 3: two-digit addition
+        final qa = rng.nextInt(90) + 10; // 10..99
+        final qb = rng.nextInt(90) + 10; // 10..99
+        return _Q(id: 'q$index', index: index, a: qa, b: qb);
+      }
+    }
+
+    // Subtraction
+    if (_isSubtraction) {
+      if (widget.level == 1) {
+        // within 10, non-negative
+        int qa = rng.nextInt(11); // 0..10
+        int qb = rng.nextInt(qa + 1); // 0..qa
+        return _Q(id: 'q$index', index: index, a: qa, b: qb);
+      } else if (widget.level == 2) {
+        // within 20, non-negative
+        int qa = rng.nextInt(21); // 0..20
+        int qb = rng.nextInt(qa + 1);
+        return _Q(id: 'q$index', index: index, a: qa, b: qb);
+      } else {
+        // level 3: two-digit subtraction, non-negative
+        int qa = rng.nextInt(90) + 10; // 10..99
+        int qb = rng.nextInt(qa - 9) + 10; // 10..qa
+        return _Q(id: 'q$index', index: index, a: qa, b: qb);
+      }
+    }
+
+    // Multiplication
+    if (_isMultiplication) {
+      final tables = _tablesForLevel(widget.level);
+      final qa = tables[rng.nextInt(tables.length)]; // the table number
+      final qb = rng.nextInt(12) + 1; // 1..12
+      return _Q(id: 'q$index', index: index, a: qa, b: qb);
+    }
+
+    // Division (exact, based on multiplication tables by level)
+    if (_isDivision) {
+      final tables = _tablesForLevel(widget.level);
+      final divisor = tables[rng.nextInt(tables.length)];
+      final multiplier = rng.nextInt(12) + 1;
+      final dividend = divisor * multiplier;
+      return _Q(id: 'q$index', index: index, a: dividend, b: divisor);
+    }
+
+    // Fallback
+    final qa = rng.nextInt(12) + 1;
+    final qb = rng.nextInt(12) + 1;
+    return _Q(id: 'q$index', index: index, a: qa, b: qb);
+  }
+
 
   final Random rng = Random();
-  Timer? timer;
 
   bool _ready = false;
 
-  int remainingSeconds = 0;
+
   String answer = '';
 
   // Current displayed values
@@ -118,7 +186,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   @override
   void dispose() {
-    timer?.cancel();
     super.dispose();
   }
 
@@ -139,8 +206,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
 
     // Reset state
-    timer?.cancel();
-    remainingSeconds = secondsPerQuestion;
     answer = '';
     score = 0;
     incorrect = 0;
@@ -151,38 +216,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _questionLogs.clear();
     _attemptCountByQuestionId.clear();
 
-    // Generate base questions
-    for (int i = 0; i < totalQuestions; i++) {
-      int qa;
-      int qb;
-
-      if (_isSubtraction) {
-        // 1..24, keep non-negative (a >= b)
-        qa = rng.nextInt(24) + 1;
-        qb = rng.nextInt(24) + 1;
-        if (qb > qa) {
-          final tmp = qa;
-          qa = qb;
-          qb = tmp;
-        }
-      } else if (_isDivision) {
-        // Division from 12x12 table:
-        // pick x,y in 1..12 then ask (x*y) ÷ y
-        final x = rng.nextInt(12) + 1;
-        final y = rng.nextInt(12) + 1;
-        qa = x * y; // dividend (1..144)
-        qb = y;     // divisor (1..12)
-      } else if (_isMultiplication) {
-        // Multiplication 1..12
-        qa = rng.nextInt(12) + 1;
-        qb = rng.nextInt(12) + 1;
-      } else {
-        // Addition 1..12
-        qa = rng.nextInt(12) + 1;
-        qb = rng.nextInt(12) + 1;
-      }
-
-      _queue.add(_Q(id: 'q${i + 1}', index: i + 1, a: qa, b: qb));
+    // Generate base questions (difficulty depends on level)
+    for (int i = 1; i <= totalQuestions; i++) {
+      _queue.add(_makeQuestion(i));
     }
 
     _current = _queue.removeAt(0);
@@ -192,7 +228,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   void _startNewQuestion() {
-    timer?.cancel();
 
     final q = _current;
     if (q == null) return;
@@ -202,20 +237,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     b = q.b;
 
     answer = '';
-    remainingSeconds = secondsPerQuestion;
     _questionStart = DateTime.now();
-
-    // Start countdown
-    timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-
-      setState(() => remainingSeconds--);
-
-      if (remainingSeconds <= 0) {
-        timer?.cancel();
-        _handleTimeUp();
-      }
-    });
 
     setState(() {}); // refresh UI
   }
@@ -246,15 +268,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
   }
 
-  void _handleTimeUp() {
-    _submitAttempt(
-      isCorrect: false,
-      userAnswer: null,
-      timedOut: true,
-      snack: "Time's up!",
-    );
-  }
-
   Future<void> _submitAttempt({
     required bool isCorrect,
     required int? userAnswer,
@@ -263,8 +276,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }) async {
     final q = _current;
     if (q == null) return;
-
-    timer?.cancel();
 
     // Attempt number for this specific base question
     final attemptNo = (_attemptCountByQuestionId[q.id] ?? 0) + 1;
@@ -286,7 +297,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _questionLogs.add({
       'questionId': q.id,
       'questionIndex': q.index, // original question number (1..5)
-      'attemptNo': attemptNo,
       'a': q.a,
       'b': q.b,
       'operator': _opSymbol,
@@ -345,7 +355,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
 
   Future<void> _finishGame() async {
-    timer?.cancel();
 
     int computeAvgTimeMs() {
       if (_questionLogs.isEmpty) return 0;
@@ -395,7 +404,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
 
   void _confirmExit() {
-    timer?.cancel();
 
     showDialog<void>(
       context: context,
@@ -452,7 +460,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
 
     final qIndex = _current!.index; // original 1..5
-    final timeText = _formatTime(remainingSeconds);
 
     return Scaffold(
       body: SafeArea(
@@ -470,20 +477,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   const SizedBox(width: 8),
 
                   Expanded(
-                    child: Container(
-                      height: 34,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black54),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        timeText,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                    child: Text(
+                      _gameName,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
 
