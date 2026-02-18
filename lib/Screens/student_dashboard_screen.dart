@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'student_game_logs_list.dart';
 import 'student_game_log_detail_screen.dart';
+import '../Widgets/avg_time_chart_card.dart';
+
 
 class StudentDashboardScreen extends StatelessWidget {
   const StudentDashboardScreen({super.key});
@@ -84,6 +86,9 @@ class StudentDashboardScreen extends StatelessWidget {
                       const SizedBox(height: 10),
 
                       _TotalResultsCard(uid: uid),
+                      const SizedBox(height: 18),
+                      AvgTimeLineChartCard(uid: uid),
+
 
                       const SizedBox(height: 18),
                       const Align(

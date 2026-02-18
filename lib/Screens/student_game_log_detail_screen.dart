@@ -131,8 +131,9 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                 final op = (first['operator'] ?? '+').toString();
                 final originalIndex = (first['questionIndex'] ?? (qNumber)) as int;
 
-                final bool eventuallyCorrect =
-                list.any((x) => x['isCorrect'] == true);
+                final firstAttempt = list.first;
+                final bool isCorrect = firstAttempt['isCorrect'] == true;
+                final bool timedOut = firstAttempt['timedOut'] == true;
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -155,9 +156,14 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             _Pill(
-                              text: eventuallyCorrect ? 'Solved' : 'Not solved',
-                              filled: eventuallyCorrect,
+                              text: timedOut
+                                  ? 'Timed out'
+                                  : isCorrect
+                                  ? 'Correct'
+                                  : 'Incorrect',
+                              filled: isCorrect,
                             ),
+
                           ],
                         ),
 

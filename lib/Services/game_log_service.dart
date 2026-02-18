@@ -36,9 +36,6 @@ class GameLogService {
       'endedAt': null,
       'updatedAt': FieldValue.serverTimestamp(),
       'questions': <Map<String, dynamic>>[],
-      'startedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-
     });
 
     return doc.id;
@@ -49,11 +46,13 @@ class GameLogService {
     required int questionIndex,
     required int correct,
     required int incorrect,
+    required Map<String, dynamic> questionLog,
     required List<Map<String, dynamic>> allQuestionsSoFar,
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception('Not signed in.');
 
+    // We write the whole list each time (only 5 questions, so it’s fine and keeps order).
     await _logRef(uid, logId).set({
       'questionIndex': questionIndex,
       'correct': correct,
@@ -67,6 +66,7 @@ class GameLogService {
     required String logId,
     required int correct,
     required int incorrect,
+    required int avgTimeMs,
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception('Not signed in.');
@@ -74,6 +74,7 @@ class GameLogService {
     await _logRef(uid, logId).set({
       'correct': correct,
       'incorrect': incorrect,
+      'avgTimeMs': avgTimeMs,
       'status': 'completed',
       'endedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

@@ -98,7 +98,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   // Counters
   int score = 0; // number solved correctly (final solves)
   int incorrect = 0; // number of incorrect attempts
-  int completedCorrectly = 0; // out of totalQuestions (base questions)
 
   // Queue repeats wrong questions at end
   final List<_Q> _queue = [];
@@ -145,7 +144,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     answer = '';
     score = 0;
     incorrect = 0;
-    completedCorrectly = 0;
 
     _queue.clear();
     _current = null;
@@ -280,7 +278,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     // Update counters
     if (isCorrect) {
       score += 1;
-      completedCorrectly += 1;
     } else {
       incorrect += 1;
     }
@@ -311,24 +308,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       );
     }
 
-    // If wrong, repeat it later by adding to end of queue
-    if (!isCorrect) {
-      _queue.add(q);
-    }
-
-    // Finish once all 5 base questions have been solved correctly
-    if (completedCorrectly >= totalQuestions) {
+    // Finish after 5 questions (no repeats)
+    if (_queue.isEmpty) {
       await _finishGame();
       return;
     }
 
     // Next question
-    if (_queue.isEmpty) {
-      await _finishGame();
-      return;
-    }
     _current = _queue.removeAt(0);
-
     setState(() {});
     _startNewQuestion();
   }
@@ -343,9 +330,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     try {
       await GameLogService().updateAfterQuestion(
         logId: logId,
-        questionIndex: completedCorrectly + 1,
+        questionIndex: _questionLogs.length + 1,
         correct: score,
         incorrect: incorrect,
+        questionLog: _questionLogs.isEmpty ? {} : _questionLogs.last,
         allQuestionsSoFar: List<Map<String, dynamic>>.from(_questionLogs),
       );
     } catch (e) {
@@ -359,13 +347,25 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   Future<void> _finishGame() async {
     timer?.cancel();
 
+    int computeAvgTimeMs() {
+      if (_questionLogs.isEmpty) return 0;
+      final total = _questionLogs.fold<int>(
+        0,
+            (sum, q) => sum + ((q['timeTakenMs'] ?? 0) as int),
+      );
+      return (total / _questionLogs.length).round();
+    }
+
     final logId = _logId;
     if (logId != null) {
+      final avg = computeAvgTimeMs();
+
       try {
         await GameLogService().markCompleted(
           logId: logId,
           correct: score,
           incorrect: incorrect,
+          avgTimeMs: avg,
         );
       } catch (e) {
         debugPrint('Failed to mark completed: $e');
@@ -392,6 +392,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       ),
     );
   }
+
 
   void _confirmExit() {
     timer?.cancel();

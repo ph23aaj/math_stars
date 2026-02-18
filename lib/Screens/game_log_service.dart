@@ -66,6 +66,7 @@ class GameLogService {
     required String logId,
     required int correct,
     required int incorrect,
+    required int avgTimeMs,
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception('Not signed in.');
@@ -73,6 +74,7 @@ class GameLogService {
     await _logRef(uid, logId).set({
       'correct': correct,
       'incorrect': incorrect,
+      'avgTimeMs': avgTimeMs,
       'status': 'completed',
       'endedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
