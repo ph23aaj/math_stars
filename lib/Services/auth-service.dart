@@ -166,6 +166,14 @@ class AuthService {
 
     final childUid = childUsernameDoc.data()?['uid'] as String?;
     final childRole = childUsernameDoc.data()?['role'] as String?;
+
+    // Fetch child's name from students/{childUid}
+    final studentSnap = await _db.collection('students').doc(childUid).get();
+    final studentData = studentSnap.data() ?? {};
+
+    final childFirstName = (studentData['firstName'] ?? '').toString().trim();
+    final childLastName = (studentData['lastName'] ?? '').toString().trim();
+
     if (childUid == null || childRole != 'student') {
       throw Exception('That child username is not a student account.');
     }
@@ -180,11 +188,9 @@ class AuthService {
     } on FirebaseAuthException {
       throw Exception('Child username/password is incorrect.');
     } finally {
-      // Return to whatever auth state we had before verifying
+      // Return to whatever auth state I had before verifying
       await _auth.signOut();
       if (currentBefore != null) {
-        // We don't have the password to restore session; just keep signed out.
-        // In your flow, parent is signing up now anyway.
       }
     }
 
@@ -218,22 +224,64 @@ class AuthService {
       batch.set(_db.collection('users').doc(parentUid), {
         'role': 'parent',
         'username': parentLower,
+
+        // If you want to keep single-child for now:
         'childUid': childUid,
         'childUsername': childLower,
+        'childFirstName': childFirstName,
+        'childLastName': childLastName,
+
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       batch.set(_db.collection('parents').doc(parentUid), {
         'childUid': childUid,
         'childUsername': childLower,
+        'childFirstName': childFirstName,
+        'childLastName': childLastName,
+
         'createdAt': FieldValue.serverTimestamp(),
       });
+
 
       batch.set(parentUsernameDoc, {
         'uid': parentUid,
         'role': 'parent',
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      batch.set(
+        _db.collection('parents').doc(parentUid).collection('children').doc(childUid),
+        {
+          'childUid': childUid,
+          'childUsername': childLower,
+          'linkedAt': FieldValue.serverTimestamp(),
+        },
+      );
+
+      final studentDoc =
+      await _db.collection('students').doc(childUid).get();
+
+      final studentData = studentDoc.data() ?? {};
+      final firstName = (studentData['firstName'] ?? '').toString();
+      final lastName = (studentData['lastName'] ?? '').toString();
+
+      batch.set(
+        _db
+            .collection('parents')
+            .doc(parentUid)
+            .collection('children')
+            .doc(childUid),
+        {
+          'childUid': childUid,
+          'childUsername': childLower,
+          'childFirstName': firstName,
+          'childLastName': lastName,
+          'linkedAt': FieldValue.serverTimestamp(),
+        },
+      );
+
+
 
       await batch.commit();
       return cred;

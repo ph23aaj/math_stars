@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'student_game_logs_list.dart';
 import 'student_game_log_detail_screen.dart';
-import '../Widgets/avg_time_chart_card.dart';
+import '../Widgets/progress_charts_card.dart';
+
 
 
 class StudentDashboardScreen extends StatelessWidget {
-  const StudentDashboardScreen({super.key});
+  const StudentDashboardScreen({super.key, this.uidOverride});
 
-  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+  final String? uidOverride;
+
+  String? get _myUid => FirebaseAuth.instance.currentUser?.uid;
 
   @override
   Widget build(BuildContext context) {
-    final uid = _uid;
+    final uid = uidOverride ?? _myUid;
 
     return Scaffold(
       body: SafeArea(
@@ -87,7 +90,7 @@ class StudentDashboardScreen extends StatelessWidget {
 
                       _TotalResultsCard(uid: uid),
                       const SizedBox(height: 18),
-                      AvgTimeLineChartCard(uid: uid),
+                      ProgressChartsCard(uid: uid),
 
 
                       const SizedBox(height: 18),
