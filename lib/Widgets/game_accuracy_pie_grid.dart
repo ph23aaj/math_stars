@@ -220,36 +220,25 @@ class _AccuracyPieCardState extends State<_AccuracyPieCard> {
 
               // Legend changes based on expanded/collapsed
               if (!_expanded)
-                Row(
-                  children: const [
+                const Wrap(
+                  spacing: 12,
+                  runSpacing: 6,
+                  children: [
                     _LegendDot(color: _c2, label: 'Correct'),
-                    SizedBox(width: 12),
                     _LegendDot(color: _w2, label: 'Wrong'),
                   ],
                 )
               else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Row(
-                      children: [
-                        _LegendDot(color: _c1, label: 'Correct L1'),
-                        SizedBox(width: 10),
-                        _LegendDot(color: _c2, label: 'Correct L2'),
-                        SizedBox(width: 10),
-                        _LegendDot(color: _c3, label: 'Correct L3'),
-                      ],
-                    ),
-                    SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _LegendDot(color: _w1, label: 'Wrong L1'),
-                        SizedBox(width: 10),
-                        _LegendDot(color: _w2, label: 'Wrong L2'),
-                        SizedBox(width: 10),
-                        _LegendDot(color: _w3, label: 'Wrong L3'),
-                      ],
-                    ),
+                const Wrap(
+                  spacing: 10,
+                  runSpacing: 6,
+                  children: [
+                    _LegendDot(color: _c1, label: 'Correct L1'),
+                    _LegendDot(color: _c2, label: 'Correct L2'),
+                    _LegendDot(color: _c3, label: 'Correct L3'),
+                    _LegendDot(color: _w1, label: 'Wrong L1'),
+                    _LegendDot(color: _w2, label: 'Wrong L2'),
+                    _LegendDot(color: _w3, label: 'Wrong L3'),
                   ],
                 ),
             ],
