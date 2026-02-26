@@ -2,11 +2,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-class GameAccuracyPieGrid extends StatelessWidget {
+class GameAccuracyPieGrid extends StatefulWidget {
   const GameAccuracyPieGrid({super.key, required this.uid});
-
   final String uid;
 
+  @override
+  State<GameAccuracyPieGrid> createState() => _GameAccuracyPieGridState();
+}
+
+enum _Range { week, month, sixMonths }
+
+class _GameAccuracyPieGridState extends State<GameAccuracyPieGrid> {
   static const _games = <_GameMeta>[
     _GameMeta('timed_addition', 'Addition'),
     _GameMeta('timed_subtraction', 'Subtraction'),
@@ -14,16 +20,67 @@ class GameAccuracyPieGrid extends StatelessWidget {
     _GameMeta('timed_division', 'Division'),
   ];
 
+  _Range _range = _Range.week;
+
+  DateTime _cutoffDate() {
+    final now = DateTime.now();
+    switch (_range) {
+      case _Range.week:
+        return now.subtract(const Duration(days: 7));
+      case _Range.month:
+        return now.subtract(const Duration(days: 30)); // simple + reliable
+      case _Range.sixMonths:
+        return now.subtract(const Duration(days: 182)); // ~6 months
+    }
+  }
+
+  String _rangeLabel() {
+    switch (_range) {
+      case _Range.week:
+        return '1 week';
+      case _Range.month:
+        return '1 month';
+      case _Range.sixMonths:
+        return '6 months';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cutoff = _cutoffDate();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Accuracy by game (last 15 games each)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        Text(
+          'Accuracy by game (${_rangeLabel()})',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 10),
+
+        // Range buttons
+        Wrap(
+          spacing: 10,
+          children: [
+            ChoiceChip(
+              label: const Text('1 week'),
+              selected: _range == _Range.week,
+              onSelected: (_) => setState(() => _range = _Range.week),
+            ),
+            ChoiceChip(
+              label: const Text('1 month'),
+              selected: _range == _Range.month,
+              onSelected: (_) => setState(() => _range = _Range.month),
+            ),
+            ChoiceChip(
+              label: const Text('6 months'),
+              selected: _range == _Range.sixMonths,
+              onSelected: (_) => setState(() => _range = _Range.sixMonths),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
 
         // 4 in a row; scroll if needed
         SingleChildScrollView(
@@ -35,10 +92,16 @@ class GameAccuracyPieGrid extends StatelessWidget {
                 child: SizedBox(
                   width: 230,
                   child: _AccuracyPieCard(
-                    uid: uid,
-                    gameId: g.id,
-                    title: g.title,
-                  ),
+                           uid: widget.uid,
+                           gameId: g.id,
+                           title: g.title,
+                           cutoff: cutoff,
+                           limit: _range == _Range.week
+                               ? 200
+                               : _range == _Range.month
+                                   ? 500
+                                   : 1000,
+                         ),
                 ),
               );
             }).toList(),
@@ -60,11 +123,15 @@ class _AccuracyPieCard extends StatefulWidget {
     required this.uid,
     required this.gameId,
     required this.title,
+    required this.cutoff,
+    required this.limit,
   });
 
   final String uid;
   final String gameId;
   final String title;
+  final DateTime cutoff;
+  final int limit;
 
   @override
   State<_AccuracyPieCard> createState() => _AccuracyPieCardState();
@@ -84,15 +151,18 @@ class _AccuracyPieCardState extends State<_AccuracyPieCard> {
   static const Color _w3 = Color(0xFFFFCC80); // light/bright orange
 
   Query<Map<String, dynamic>> _query() {
-    // last 15 completed games for THIS game
     return FirebaseFirestore.instance
         .collection('students')
         .doc(widget.uid)
         .collection('gameLogs')
         .where('status', isEqualTo: 'completed')
         .where('gameId', isEqualTo: widget.gameId)
+        .where(
+          'startedAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(widget.cutoff),
+        )
         .orderBy('startedAt', descending: true)
-        .limit(15);
+        .limit(widget.limit);
   }
 
   @override
