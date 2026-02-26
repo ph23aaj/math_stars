@@ -1,23 +1,19 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'game_selection.dart';
 import 'package:math_stars/Services/auth-service.dart';
-
 import 'teacher_dashboard_screen.dart';
 import 'student_dashboard_screen.dart';
 import 'parent_dashboard_screen.dart';
-
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> _userDocStream() {
     final uid = AuthService().currentUser?.uid;
-    if (uid == null) {
-      // Stream that emits nothing; UI will show "Not signed in"
-      return const Stream.empty();
-    }
+    if (uid == null) return const Stream.empty();
     return FirebaseFirestore.instance.collection('users').doc(uid).snapshots();
   }
 
@@ -26,176 +22,348 @@ class HomeScreen extends StatelessWidget {
     final uid = AuthService().currentUser?.uid;
 
     return Scaffold(
-      body: SafeArea(
-        child: uid == null
-            ? const Center(child: Text('Not signed in.'))
-            : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: _userDocStream(),
-          builder: (context, snap) {
-            if (!snap.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      body: uid == null
+          ? const Center(child: Text('Not signed in.'))
+          : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: _userDocStream(),
+        builder: (context, snap) {
+          if (!snap.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            final data = snap.data!.data() ?? {};
-            final role = (data['role'] ?? 'student').toString();
+          final data = snap.data!.data() ?? {};
+          final role = (data['role'] ?? 'student').toString();
 
-            final isStudent = role == 'student';
-            final isTeacher = role == 'teacher';
-            final isParent = role == 'parent';
+          final isStudent = role == 'student';
+          final isTeacher = role == 'teacher';
+          final isParent = role == 'parent';
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Top row: avatar + title + settings
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+          return Stack(
+            children: [
+              // ----- SPACE BACKGROUND -----
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF0B1026), // deep space
+                      Color(0xFF1A2A6C), // blue/purple
+                      Color(0xFF2B1055), // nebula purple
+                    ],
+                  ),
+                ),
+              ),
+
+              // ----- STAR OVERLAY (no assets needed) -----
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _StarFieldPainter(),
+                  ),
+                ),
+              ),
+
+              // ----- PLANETS (soft blobs) -----
+              Positioned(
+                top: -50,
+                left: -40,
+                child: _PlanetBlob(
+                  size: 160,
+                  color: const Color(0xFF3A86FF).withOpacity(0.25),
+                ),
+              ),
+              Positioned(
+                bottom: -70,
+                right: -60,
+                child: _PlanetBlob(
+                  size: 220,
+                  color: const Color(0xFFF72585).withOpacity(0.18),
+                ),
+              ),
+
+              // ----- CONTENT -----
+              SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  child: Column(
                     children: [
-                      const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Color(0xFFDDDDDD),
+                      // Header
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withOpacity(0.18)),
+                            ),
+                            child: const Icon(Icons.rocket_launch, color: Colors.white),
+                          ),
+                          const Spacer(),
+                          const Text(
+                            'Maths Stars',
+                            style: TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            onPressed: () {
+                              // TODO: settings
+                            },
+                            icon: const Icon(Icons.settings, color: Colors.white),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      const Text(
-                        'Maths Stars',
-                        style: TextStyle(
-                          fontSize: 45,
-                          fontWeight: FontWeight.bold,
+
+                      const SizedBox(height: 16),
+
+                      // Mission card (more playful)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(26),
+                          border: Border.all(color: Colors.white.withOpacity(0.18)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.30),
+                              blurRadius: 30,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.10),
+                                borderRadius: BorderRadius.circular(22),
+                              ),
+                              child: Image.asset(
+                                'assets/images/project_logo.png',
+                                width: 140,
+                                height: 140,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Hey Astronaut!',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              isStudent
+                                  ? 'Complete missions and earn ⭐ stars!'
+                                  : isTeacher
+                                  ? 'Track your class missions 🚀'
+                                  : 'Check your child’s star journey 🌙',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () {
-                          // TODO: settings
+
+                      const SizedBox(height: 18),
+
+                      // Big “Launch” button (students only)
+                      if (isStudent) ...[
+                        _BigSpaceButton(
+                          text: 'Launch Mission',
+                          emoji: '🚀',
+                          fill: const Color(0xFFFFD166), // warm star yellow
+                          textColor: Colors.black,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const GameSelectionScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Dashboard button
+                      _BigSpaceButton(
+                        text: isTeacher
+                            ? 'Teacher Dashboard'
+                            : isParent
+                            ? 'Parent Dashboard'
+                            : 'Mission Progress',
+                        emoji: '📈',
+                        fill: Colors.white.withOpacity(0.10),
+                        textColor: Colors.white,
+                        outline: true,
+                        onTap: () {
+                          if (isStudent) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const StudentDashboardScreen()),
+                            );
+                          } else if (isTeacher) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const TeacherDashboardScreen()),
+                            );
+                          } else if (isParent) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+                            );
+                          }
                         },
-                        icon: const Icon(Icons.settings),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Log out
+                      _BigSpaceButton(
+                        text: 'Log out',
+                        emoji: '',
+                        fill: Colors.white.withOpacity(0.08),
+                        textColor: Colors.white70,
+                        outline: true,
+                        onTap: () async {
+                          await AuthService().signOut();
+                          if (!context.mounted) return;
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MathsStarsLoginScreen()),
+                                (route) => false,
+                          );
+                        },
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 2),
-
-                  // Logo
-                  Image.asset(
-                    'assets/images/project_logo.png',
-                    width: 250,
-                    height: 250,
-                    fit: BoxFit.contain,
-                  ),
-
-                  // Banner
-                  Container(
-                    height: 40,
-                    width: double.infinity,
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'Lets Learn Some Maths!',
-                      style: TextStyle(
-                        fontSize: 30,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 50),
-
-                  // Play Game only for students
-                  if (isStudent) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const GameSelectionScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 26),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: const Text('Play Game'),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                  ],
-
-                  // View Dashboard routes based on role
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        if (isStudent) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const StudentDashboardScreen(),
-                            ),
-                          );
-                        } else if (isTeacher) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const TeacherDashboardScreen(),
-                            ),
-                          );
-                        } else if (isParent) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
-                          );
-                        }
-
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 26),
-                        shape: const StadiumBorder(),
-                        side: const BorderSide(color: Colors.black, width: 1.5),
-                        foregroundColor: Colors.black,
-                      ),
-                      child: Text(
-                        isTeacher
-                            ? 'View Teacher Dashboard'
-                            : isParent
-                            ? 'View Parent Dashboard'
-                            : 'View Dashboard',
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Log out
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        await AuthService().signOut();
-                        if (!context.mounted) return;
-
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (_) => const MathsStarsLoginScreen(),
-                          ),
-                              (route) => false,
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 26),
-                        shape: const StadiumBorder(),
-                        side: const BorderSide(color: Colors.black, width: 1.5),
-                        foregroundColor: Colors.black,
-                      ),
-                      child: const Text('Log out'),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            );
-          },
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ---------- UI HELPERS ----------
+
+class _BigSpaceButton extends StatelessWidget {
+  const _BigSpaceButton({
+    required this.text,
+    required this.emoji,
+    required this.fill,
+    required this.textColor,
+    required this.onTap,
+    this.outline = false,
+  });
+
+  final String text;
+  final String emoji;
+  final Color fill;
+  final Color textColor;
+  final VoidCallback onTap;
+  final bool outline;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 62,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: fill,
+          foregroundColor: textColor,
+          elevation: outline ? 0 : 14,
+          shadowColor: Colors.black.withOpacity(0.35),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: outline
+                ? BorderSide(color: Colors.white.withOpacity(0.22), width: 1.2)
+                : BorderSide.none,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 10),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _PlanetBlob extends StatelessWidget {
+  const _PlanetBlob({required this.size, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+// Procedural starfield (static) — no assets required
+class _StarFieldPainter extends CustomPainter {
+  const _StarFieldPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = Random(7); // fixed seed = stable stars
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Lots of small stars
+    for (int i = 0; i < 180; i++) {
+      final dx = rnd.nextDouble() * size.width;
+      final dy = rnd.nextDouble() * size.height;
+
+      final r = rnd.nextDouble() * 1.4 + 0.4; // radius
+      final alpha = (rnd.nextDouble() * 0.55 + 0.15); // 0.15..0.70
+
+      paint.color = Colors.white.withOpacity(alpha);
+      canvas.drawCircle(Offset(dx, dy), r, paint);
+    }
+
+    // A few bigger “sparkle” stars
+    for (int i = 0; i < 18; i++) {
+      final dx = rnd.nextDouble() * size.width;
+      final dy = rnd.nextDouble() * size.height;
+      final r = rnd.nextDouble() * 2.2 + 1.2;
+      paint.color = Colors.white.withOpacity(0.55);
+      canvas.drawCircle(Offset(dx, dy), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
