@@ -313,13 +313,6 @@ class _ProfileCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _MiniChip(text: '⭐ Learner'),
-                        const SizedBox(width: 8),
-                        _MiniChip(text: '🚀 Missions'),
-                      ],
-                    ),
                   ],
                 ),
               ),

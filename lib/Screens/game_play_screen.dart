@@ -5,7 +5,7 @@ import '../Services/game_log_service.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final int level; // 1, 2, 3
-  final int game;  // 1 = addition, 2 = subtraction
+  final int game;  // 1 = addition, 2 = subtraction, 3=multiplication, 4=division
 
   const GamePlayScreen({
     super.key,
@@ -34,8 +34,7 @@ class _Q {
 class _GamePlayScreenState extends State<GamePlayScreen> {
   static const int totalQuestions = 5;
 
-
-  // Game mapping: 1=addition, 2=subtraction, 3=multiplication
+  // Game mapping: 1=addition, 2=subtraction, 3=multiplication, 4=division
   bool get _isAddition => widget.game == 1;
   bool get _isSubtraction => widget.game == 2;
   bool get _isMultiplication => widget.game == 3;
@@ -71,7 +70,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   // ---------------- Difficulty helpers ----------------
 
-// For multiplication/division progression
+  // For multiplication/division progression
   List<int> _tablesForLevel(int level) {
     switch (level) {
       case 1:
@@ -85,22 +84,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
   }
 
-// Create 1 base question (index is 1..5)
+  // Create 1 base question (index is 1..5)
   _Q _makeQuestion(int index) {
     // Addition
     if (_isAddition) {
       if (widget.level == 1) {
-        // within 10
         final qa = rng.nextInt(11); // 0..10
         final qb = rng.nextInt(11 - qa); // keeps sum <= 10
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
       } else if (widget.level == 2) {
-        // within 20 (some crossing 10)
         int qa = rng.nextInt(21); // 0..20
         int qb = rng.nextInt(21 - qa);
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
       } else {
-        // level 3: two-digit addition
         final qa = rng.nextInt(90) + 10; // 10..99
         final qb = rng.nextInt(90) + 10; // 10..99
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
@@ -110,17 +106,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     // Subtraction
     if (_isSubtraction) {
       if (widget.level == 1) {
-        // within 10, non-negative
         int qa = rng.nextInt(11); // 0..10
         int qb = rng.nextInt(qa + 1); // 0..qa
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
       } else if (widget.level == 2) {
-        // within 20, non-negative
         int qa = rng.nextInt(21); // 0..20
         int qb = rng.nextInt(qa + 1);
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
       } else {
-        // level 3: two-digit subtraction, non-negative
         int qa = rng.nextInt(90) + 10; // 10..99
         int qb = rng.nextInt(qa - 9) + 10; // 10..qa
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
@@ -130,12 +123,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     // Multiplication
     if (_isMultiplication) {
       final tables = _tablesForLevel(widget.level);
-      final qa = tables[rng.nextInt(tables.length)]; // the table number
-      final qb = rng.nextInt(12) + 1; // 1..12
+      final qa = tables[rng.nextInt(tables.length)];
+      final qb = rng.nextInt(12) + 1;
       return _Q(id: 'q$index', index: index, a: qa, b: qb);
     }
 
-    // Division (exact, based on multiplication tables by level)
+    // Division (exact)
     if (_isDivision) {
       final tables = _tablesForLevel(widget.level);
       final divisor = tables[rng.nextInt(tables.length)];
@@ -150,11 +143,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     return _Q(id: 'q$index', index: index, a: qa, b: qb);
   }
 
-
   final Random rng = Random();
 
   bool _ready = false;
-
 
   String answer = '';
 
@@ -164,19 +155,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   int get correctAnswer => _computeAnswer(a, b);
 
   // Counters
-  int score = 0; // number solved correctly (final solves)
-  int incorrect = 0; // number of incorrect attempts
+  int score = 0;
+  int incorrect = 0;
 
-  // Queue repeats wrong questions at end
+  // Queue (no repeats)
   final List<_Q> _queue = [];
   _Q? _current;
 
-  // Timing/logging
+  // Logging
   DateTime? _questionStart;
   String? _logId;
   bool _saving = false;
   final List<Map<String, dynamic>> _questionLogs = [];
-  final Map<String, int> _attemptCountByQuestionId = {};
+  final Map<String, int> _attemptCountByQuestionId = {}; // kept but unused now (fine)
 
   @override
   void initState() {
@@ -184,15 +175,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _initLogAndStart();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _initLogAndStart() async {
     setState(() => _ready = false);
 
-    // Create a partial log at the start (so abandoned sessions exist)
     try {
       _logId = await GameLogService().createLog(
         gameId: _gameId,
@@ -205,7 +190,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       _logId = null;
     }
 
-    // Reset state
     answer = '';
     score = 0;
     incorrect = 0;
@@ -216,7 +200,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _questionLogs.clear();
     _attemptCountByQuestionId.clear();
 
-    // Generate base questions (difficulty depends on level)
     for (int i = 1; i <= totalQuestions; i++) {
       _queue.add(_makeQuestion(i));
     }
@@ -228,18 +211,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   void _startNewQuestion() {
-
     final q = _current;
     if (q == null) return;
 
-    // Load question numbers into display variables
     a = q.a;
     b = q.b;
 
     answer = '';
     _questionStart = DateTime.now();
 
-    setState(() {}); // refresh UI
+    setState(() {});
   }
 
   void _pressDigit(int d) {
@@ -277,26 +258,22 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     final q = _current;
     if (q == null) return;
 
-    // Attempt number for this specific base question
     final attemptNo = (_attemptCountByQuestionId[q.id] ?? 0) + 1;
     _attemptCountByQuestionId[q.id] = attemptNo;
 
     final now = DateTime.now();
-    final timeTakenMs = _questionStart == null
-        ? 0
-        : now.difference(_questionStart!).inMilliseconds;
+    final timeTakenMs =
+    _questionStart == null ? 0 : now.difference(_questionStart!).inMilliseconds;
 
-    // Update counters
     if (isCorrect) {
       score += 1;
     } else {
       incorrect += 1;
     }
 
-    // Add attempt log entry
     _questionLogs.add({
       'questionId': q.id,
-      'questionIndex': q.index, // original question number (1..5)
+      'questionIndex': q.index,
       'a': q.a,
       'b': q.b,
       'operator': _opSymbol,
@@ -318,13 +295,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       );
     }
 
-    // Finish after 5 questions (no repeats)
     if (_queue.isEmpty) {
       await _finishGame();
       return;
     }
 
-    // Next question
     _current = _queue.removeAt(0);
     setState(() {});
     _startNewQuestion();
@@ -353,9 +328,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
   }
 
-
   Future<void> _finishGame() async {
-
     int computeAvgTimeMs() {
       if (_questionLogs.isEmpty) return 0;
       final total = _questionLogs.fold<int>(
@@ -368,7 +341,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     final logId = _logId;
     if (logId != null) {
       final avg = computeAvgTimeMs();
-
       try {
         await GameLogService().markCompleted(
           logId: logId,
@@ -387,13 +359,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Game finished'),
+        title: const Text('Mission complete 🚀'),
         content: Text('You scored $score / $totalQuestions'),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // close dialog
-              Navigator.pop(context); // back to selection for now
+              Navigator.pop(context);
+              Navigator.pop(context);
             },
             child: const Text('OK'),
           ),
@@ -402,19 +374,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
   }
 
-
   void _confirmExit() {
-
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Exit game?'),
+        title: const Text('Exit mission?'),
         content: const Text('Your current progress will be lost.'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _startNewQuestion(); // resume current question
+              _startNewQuestion();
             },
             child: const Text('Cancel'),
           ),
@@ -444,13 +414,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
   }
 
-  String _formatTime(int secs) {
-    if (secs < 0) secs = 0;
-    final int m = secs ~/ 60;
-    final int s = secs % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     if (!_ready || _current == null) {
@@ -459,129 +422,268 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       );
     }
 
-    final qIndex = _current!.index; // original 1..5
+    final qIndex = _current!.index;
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ---------- TOP BAR ----------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
+      body: Stack(
+        children: [
+          // Background gradient (space)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF0B1026),
+                  Color(0xFF1A2A6C),
+                  Color(0xFF2B1055),
+                ],
+              ),
+            ),
+          ),
+
+          // Stars overlay
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(painter: _StarFieldPainter()),
+            ),
+          ),
+
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
                 children: [
-                  IconButton(
-                    onPressed: _confirmExit,
-                    icon: const Icon(Icons.close),
-                  ),
-                  const SizedBox(width: 8),
-
-                  Expanded(
-                    child: Text(
-                      _gameName,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  // Score box (top right)
-                  Container(
-                    width: 64,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      border: Border.all(color: Colors.black45),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$score',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                  // ---------- TOP BAR ----------
+                  Row(
+                    children: [
+                      _GlassIconButton(
+                        icon: Icons.close,
+                        onTap: _confirmExit,
                       ),
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: Text(
+                          '$_gameName • Level ${widget.level}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      _ScorePill(score: score),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // ---------- GAME AREA ----------
+                  _GlassCard(
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            _MiniChip(text: 'Question $qIndex / $totalQuestions'),
+                            const Spacer(),
+                            _MiniChip(text: 'Wrong: $incorrect'),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+
+                        Text(
+                          '$a $_opSymbol $b = ?',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 44,
+                            fontWeight: FontWeight.w900,
+                            height: 1.0,
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        _AnswerBox(text: answer),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // ---------- KEYPAD ----------
+                  Expanded(
+                    child: _Keypad(
+                      onDigit: _pressDigit,
+                      onBackspace: _backspace,
+                      onEnter: _enter,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    'Type your answer and launch ↵',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-            const SizedBox(height: 8),
+// ------------------ SPACE UI WIDGETS ------------------
 
-            // ---------- GAME AREA ----------
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black54),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Question $qIndex / $totalQuestions',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          '$a $_opSymbol $b = ?',
-                          style: const TextStyle(
-                            fontSize: 42,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black38),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            answer.isEmpty ? ' ' : answer,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+class _GlassCard extends StatelessWidget {
+  const _GlassCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.30),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _GlassIconButton extends StatelessWidget {
+  const _GlassIconButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: Icon(icon, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _ScorePill extends StatelessWidget {
+  const _ScorePill({required this.score});
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFD166).withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD166).withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Text('⭐', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 6),
+          Text(
+            '$score',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 15,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-            const SizedBox(height: 16),
+class _MiniChip extends StatelessWidget {
+  const _MiniChip({required this.text});
+  final String text;
 
-            // ---------- KEYPAD ----------
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-              child: _Keypad(
-                onDigit: _pressDigit,
-                onBackspace: _backspace,
-                onEnter: _enter,
-              ),
-            ),
-          ],
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.90),
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
         ),
       ),
     );
   }
 }
+
+class _AnswerBox extends StatelessWidget {
+  const _AnswerBox({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = text.isEmpty ? ' ' : text;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Text(
+        shown,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 30,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2,
+        ),
+      ),
+    );
+  }
+}
+
+// ------------------ KEYPAD (SPACE THEME) ------------------
 
 class _Keypad extends StatelessWidget {
   final void Function(int digit) onDigit;
@@ -608,42 +710,66 @@ class _Keypad extends StatelessWidget {
             _key('6', onTap: () => onDigit(6)),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         Row(
           children: [
             _key('7', onTap: () => onDigit(7)),
             _key('8', onTap: () => onDigit(8)),
             _key('9', onTap: () => onDigit(9)),
             _key('0', onTap: () => onDigit(0)),
-            _key('⌫', onTap: onBackspace),
-            _key('↵', onTap: onEnter),
+            _key('⌫', onTap: onBackspace, isAction: true),
+            _key('↵', onTap: onEnter, isPrimary: true),
           ],
         ),
       ],
     );
   }
 
-  Widget _key(String label, {required VoidCallback onTap}) {
+  Widget _key(
+      String label, {
+        required VoidCallback onTap,
+        bool isPrimary = false,
+        bool isAction = false,
+      }) {
+    final Color border = isPrimary
+        ? const Color(0xFFFFD166)
+        : Colors.white.withValues(alpha: 0.18);
+
+    final Color bg = isPrimary
+        ? const Color(0xFFFFD166).withValues(alpha: 0.22)
+        : isAction
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.10);
+
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6),
         child: SizedBox(
-          height: 46,
-          child: OutlinedButton(
-            onPressed: onTap,
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(color: Colors.grey.shade600),
-              foregroundColor: Colors.black,
-              backgroundColor: Colors.grey.shade300,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+          height: 52,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onTap,
+            child: Container(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: border.withValues(alpha: isPrimary ? 0.55 : 1.0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 14,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-            ),
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: isPrimary ? 0.95 : 0.92),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
@@ -651,4 +777,39 @@ class _Keypad extends StatelessWidget {
       ),
     );
   }
+}
+
+// ------------------ STARS ------------------
+
+class _StarFieldPainter extends CustomPainter {
+  const _StarFieldPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = Random(11);
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 190; i++) {
+      final dx = rnd.nextDouble() * size.width;
+      final dy = rnd.nextDouble() * size.height;
+
+      final r = rnd.nextDouble() * 1.4 + 0.4;
+      final alpha = (rnd.nextDouble() * 0.55 + 0.12);
+
+      paint.color = Colors.white.withValues(alpha: alpha);
+      canvas.drawCircle(Offset(dx, dy), r, paint);
+    }
+
+    for (int i = 0; i < 16; i++) {
+      final dx = rnd.nextDouble() * size.width;
+      final dy = rnd.nextDouble() * size.height;
+      final r = rnd.nextDouble() * 2.0 + 1.2;
+
+      paint.color = Colors.white.withValues(alpha: 0.55);
+      canvas.drawCircle(Offset(dx, dy), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
