@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'student_game_logs_list.dart';
 import 'student_game_log_detail_screen.dart';
 import '../Widgets/progress_charts_card.dart';
-import '../Widgets/game_accuracy_pie_grid';
+import '../Widgets/game_accuracy_pie_grid.dart';
 import '../Widgets/accuracy_line_chart_card.dart';
 
 

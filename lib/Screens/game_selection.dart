@@ -52,7 +52,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
 
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 28), 
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -345,8 +345,8 @@ class _GamePlanetTile extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTap(gameNumber),
       child: Container(
-        height: 150,
-        padding: const EdgeInsets.all(14),
+        height: 158, // small buffer to prevent micro-overflow
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(isSelected ? 0.16 : 0.10),
           borderRadius: BorderRadius.circular(24),
@@ -381,19 +381,25 @@ class _GamePlanetTile extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
                 fontSize: 15,
+                height: 1.1, // slightly tighter line height
               ),
             ),
             const SizedBox(height: 6),
             Text(
               isSelected ? 'Selected ⭐' : 'Tap to select',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.72),
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
+                height: 1.1,
               ),
             ),
           ],
