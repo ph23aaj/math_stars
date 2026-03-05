@@ -1,14 +1,14 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'student_game_logs_list.dart';
 import 'student_game_log_detail_screen.dart';
-import '../Widgets/progress_charts_card.dart';
+
 import '../Widgets/game_accuracy_pie_grid.dart';
 import '../Widgets/accuracy_line_chart_card.dart';
-
-
-
 
 class StudentDashboardScreen extends StatelessWidget {
   const StudentDashboardScreen({super.key, this.uidOverride});
@@ -22,113 +22,216 @@ class StudentDashboardScreen extends StatelessWidget {
     final uid = uidOverride ?? _myUid;
 
     return Scaffold(
-      body: SafeArea(
-        child: uid == null
-            ? const Center(child: Text('Not signed in.'))
-            : Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Column(
-            children: [
-              // Top bar: Home icon (left) - Title (centre) - Settings (right)
-              Row(
+      body: Stack(
+        children: [
+          // Background gradient (space)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF0B1026),
+                  Color(0xFF1A2A6C),
+                  Color(0xFF2B1055),
+                ],
+              ),
+            ),
+          ),
+
+          // Stars overlay
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(painter: _StarFieldPainter()),
+            ),
+          ),
+
+          SafeArea(
+            child: uid == null
+                ? const Center(
+              child: Text('Not signed in.', style: TextStyle(color: Colors.white)),
+            )
+                : Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Column(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.home_outlined, size: 30),
-                    onPressed: () => Navigator.pop(context),
+                  // TOP BAR
+                  Row(
+                    children: [
+                      _GlassIconButton(
+                        icon: Icons.home_outlined,
+                        onTap: () => Navigator.pop(context),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Dashboard',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _GlassIconButton(
+                        icon: Icons.settings_outlined,
+                        onTap: () {
+                          // TODO: settings later
+                        },
+                      ),
+                    ],
                   ),
-                  const Expanded(
-                    child: Text(
-                      'Dashboard',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+
+                  const SizedBox(height: 14),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: Column(
+                        children: [
+                          Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 380),
+                              child: _ProfileCard(uid: uid),
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 680),
+                              child: _GlassCard(
+                                child: SizedBox(
+                                  height: 254,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text('🏅', style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.9))),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'Badges / Level / Streak',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 18),
+
+                          // Section title
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Progress',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.95),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Your existing chart cards
+                          // If these widgets have white backgrounds, they’ll still look fine here.
+                          // (Later, we can “space theme” them too if you want.)
+                          AccuracyLineChartCard(uid: uid),
+
+                          const SizedBox(height: 14),
+
+                          GameAccuracyPieGrid(uid: uid),
+
+                          const SizedBox(height: 18),
+
+                          _PanelCard(
+                            child: StudentGameLogsList(
+                              uid: uid,
+                              onOpenLog: (logId) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => StudentGameLogDetailScreen(uid: uid, logId: logId),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Past games',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.95),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Wrap logs list in a glass container so it matches theme
+                          _GlassCard(
+                            child: StudentGameLogsList(
+                              uid: uid,
+                              onOpenLog: (logId) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => StudentGameLogDetailScreen(uid: uid, logId: logId),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.settings_outlined, size: 30),
-                    onPressed: () {
-                      // TODO: settings page later
-                    },
                   ),
                 ],
               ),
-
-              const SizedBox(height: 14),
-
-              // Main content scroll
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _ProfileCard(uid: uid),
-
-                      const SizedBox(height: 18),
-
-                      // Grey placeholder bar
-                      Container(
-                        height: 48,
-                        width: 220,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.black12),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Badge / Level / Streak',
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      const Align(
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Topics',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      _TotalResultsCard(uid: uid),
-                      const SizedBox(height: 18),
-                      AccuracyLineChartCard(uid: uid),
-
-                      const SizedBox(height: 18),
-                      GameAccuracyPieGrid(uid: uid),
-
-
-
-                      const SizedBox(height: 18),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Past 15 games',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      StudentGameLogsList(
-                        uid: uid,
-                        onOpenLog: (logId) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => StudentGameLogDetailScreen(uid: uid, logId: logId),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
+    );
+  }
+}
+
+// ------------------ PROFILE CARD ------------------
+
+class _PanelCard extends StatelessWidget {
+  const _PanelCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        // More solid than glass so charts are readable
+        color: const Color(0xFF0B1026).withOpacity(0.85),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.22), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.45),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }
@@ -150,65 +253,67 @@ class _ProfileCard extends StatelessWidget {
         final lastName = (data['lastName'] ?? '').toString();
         final className = (data['className'] ?? '').toString();
 
-        final displayName = ('$firstName $lastName').trim().isEmpty
-            ? 'Student'
-            : ('$firstName $lastName').trim();
+        final displayName = ('$firstName $lastName').trim().isEmpty ? 'Student' : ('$firstName $lastName').trim();
 
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.black54),
-            borderRadius: BorderRadius.circular(12),
-          ),
+        return _GlassCard(
           child: Row(
             children: [
-              // Avatar circle (placeholder)
+              // Avatar “planet”
               Container(
                 width: 78,
                 height: 78,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.grey.shade300,
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.26),
+                      Colors.white.withOpacity(0.10),
+                      Colors.white.withOpacity(0.06),
+                    ],
+                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.22)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '🪐',
+                  style: TextStyle(fontSize: 28, color: Colors.white.withOpacity(0.95)),
                 ),
               ),
-
-              const SizedBox(width: 16),
-
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Name placeholder bar
-                    Container(
-                      height: 22,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black54),
+                    Text(
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
                         color: Colors.white,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        displayName,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        height: 1.1,
                       ),
                     ),
-
+                    const SizedBox(height: 8),
+                    Text(
+                      className.isEmpty ? 'Class: —' : 'Class: $className',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.80),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        height: 1.1,
+                      ),
+                    ),
                     const SizedBox(height: 10),
-
-                    // Class placeholder bar
-                    Container(
-                      height: 22,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black54),
-                        color: Colors.white,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        className.isEmpty ? 'Class: —' : 'Class: $className',
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Row(
+                      children: [
+                        _MiniChip(text: '⭐ Learner'),
+                        const SizedBox(width: 8),
+                        _MiniChip(text: '🚀 Missions'),
+                      ],
                     ),
                   ],
                 ),
@@ -221,99 +326,114 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _TotalResultsCard extends StatelessWidget {
-  const _TotalResultsCard({required this.uid});
-
-  final String uid;
+class _MiniChip extends StatelessWidget {
+  const _MiniChip({required this.text});
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final progressDoc = FirebaseFirestore.instance.collection('progress').doc(uid);
-
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.black54),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withOpacity(0.18)),
       ),
-      child: Column(
-        children: [
-          const Text(
-            'Total Results',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-
-          const SizedBox(height: 12),
-
-          StreamBuilder<DocumentSnapshot>(
-            stream: progressDoc.snapshots(),
-            builder: (context, snap) {
-              final data = (snap.data?.data() as Map<String, dynamic>?) ?? {};
-              final gamesPlayed = (data['totalGamesPlayed'] ?? 0) as int;
-              final correct = (data['totalCorrect'] ?? 0) as int;
-              final incorrect = (data['totalIncorrect'] ?? 0) as int;
-
-              return Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _StatPill(label: 'Games', value: gamesPlayed.toString()),
-                      _StatPill(label: 'Correct', value: correct.toString()),
-                      _StatPill(label: 'Wrong', value: incorrect.toString()),
-                    ],
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Big “chart” placeholder (matches your sketch)
-                  Container(
-                    height: 220,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black54),
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'Chart / Results Visual (later)',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.92),
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
       ),
     );
   }
 }
 
-class _StatPill extends StatelessWidget {
-  const _StatPill({required this.label, required this.value});
+// ------------------ GLASS UI HELPERS ------------------
 
-  final String label;
-  final String value;
+class _GlassCard extends StatelessWidget {
+  const _GlassCard({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Column(
-        children: [
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 12)),
+        color: Colors.white.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
         ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _GlassIconButton extends StatelessWidget {
+  const _GlassIconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.18)),
+        ),
+        child: Icon(icon, color: Colors.white),
       ),
     );
   }
+}
+
+// ------------------ STARS ------------------
+
+class _StarFieldPainter extends CustomPainter {
+  const _StarFieldPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = Random(11);
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 190; i++) {
+      final dx = rnd.nextDouble() * size.width;
+      final dy = rnd.nextDouble() * size.height;
+
+      final r = rnd.nextDouble() * 1.4 + 0.4;
+      final alpha = (rnd.nextDouble() * 0.55 + 0.12);
+
+      paint.color = Colors.white.withOpacity(alpha);
+      canvas.drawCircle(Offset(dx, dy), r, paint);
+    }
+
+    for (int i = 0; i < 16; i++) {
+      final dx = rnd.nextDouble() * size.width;
+      final dy = rnd.nextDouble() * size.height;
+      final r = rnd.nextDouble() * 2.0 + 1.2;
+
+      paint.color = Colors.white.withOpacity(0.55);
+      canvas.drawCircle(Offset(dx, dy), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
