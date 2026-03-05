@@ -63,11 +63,9 @@ class StudentGameLogsList extends StatelessWidget {
                 ? 'Abandoned'
                 : 'In progress';
 
-            // Prefer startedAt, fallback to updatedAt
             DateTime? dt;
             final startedAt = d['startedAt'];
             final updatedAt = d['updatedAt'];
-
             if (startedAt is Timestamp) dt = startedAt.toDate();
             if (dt == null && updatedAt is Timestamp) dt = updatedAt.toDate();
 
@@ -92,8 +90,6 @@ class StudentGameLogsList extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-
-                      // Number bubble
                       Container(
                         width: 36,
                         height: 36,
@@ -110,14 +106,11 @@ class StudentGameLogsList extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-
                             Text(
                               '$gameName (Level $level)',
                               style: const TextStyle(
@@ -126,9 +119,7 @@ class StudentGameLogsList extends StatelessWidget {
                                 fontSize: 14,
                               ),
                             ),
-
                             const SizedBox(height: 4),
-
                             Text(
                               dateText,
                               style: TextStyle(
@@ -137,9 +128,7 @@ class StudentGameLogsList extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-
                             const SizedBox(height: 4),
-
                             Text(
                               '$statusText • Score $correct/$total',
                               style: TextStyle(
@@ -151,7 +140,6 @@ class StudentGameLogsList extends StatelessWidget {
                           ],
                         ),
                       ),
-
                       const Icon(Icons.chevron_right, color: Colors.white70),
                     ],
                   ),
@@ -159,7 +147,6 @@ class StudentGameLogsList extends StatelessWidget {
               ),
             );
           },
-
         );
       },
     );

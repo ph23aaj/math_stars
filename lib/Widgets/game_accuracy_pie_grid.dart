@@ -109,9 +109,9 @@ class _GameAccuracyPieGridState extends State<GameAccuracyPieGrid> {
         ),
 
         const SizedBox(height: 10),
-        const Text(
+        Text(
           'Tap a chart to expand into level breakdown.',
-          style: TextStyle(fontSize: 12, color: Colors.black54),
+          style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.75)),
         ),
       ],
     );
@@ -170,8 +170,19 @@ class _AccuracyPieCardState extends State<_AccuracyPieCard> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.black54),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _query().snapshots(),
@@ -266,7 +277,7 @@ class _AccuracyPieCardState extends State<_AccuracyPieCard> {
                 _expanded
                     ? 'Expanded by level'
                     : 'Correct ${correctPct.toStringAsFixed(0)}% • Wrong ${wrongPct.toStringAsFixed(0)}%',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.78)),
               ),
               const SizedBox(height: 10),
 
@@ -322,11 +333,19 @@ class _AccuracyPieCardState extends State<_AccuracyPieCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        Text(
+          widget.title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
+        ),
         const SizedBox(height: 8),
-        const SizedBox(
+        SizedBox(
           height: 180,
-          child: Center(child: Text('No data yet')),
+          child: Center(
+            child: Text(
+              'No data yet',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.80)),
+            ),
+          ),
         ),
       ],
     );
@@ -341,7 +360,7 @@ class _AccuracyPieCardState extends State<_AccuracyPieCard> {
     if (value == 0) {
       return PieChartSectionData(
         value: 0,
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         radius: 46,
         title: '',
       );
@@ -379,7 +398,7 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.80))),
       ],
     );
   }

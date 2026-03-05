@@ -10,6 +10,8 @@ import 'student_game_log_detail_screen.dart';
 import '../Widgets/game_accuracy_pie_grid.dart';
 import '../Widgets/accuracy_line_chart_card.dart';
 
+
+
 class StudentDashboardScreen extends StatelessWidget {
   const StudentDashboardScreen({super.key, this.uidOverride});
 
@@ -106,16 +108,32 @@ class StudentDashboardScreen extends StatelessWidget {
                               child: _GlassCard(
                                 child: SizedBox(
                                   height: 254,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      Text('🏅', style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.9))),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        'Badges / Level / Streak',
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.9),
-                                          fontWeight: FontWeight.w800,
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text('🏅', style: TextStyle(fontSize: 18, color: Colors.white.withValues(alpha: 0.9))),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            'Badges / Level / Streak',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.9),
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      // later: badges content goes here
+                                      Expanded(
+                                        child: Center(
+                                          child: Text(
+                                            'Coming soon…',
+                                            style: TextStyle(color: Colors.white.withValues(alpha: 0.70), fontWeight: FontWeight.w700),
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -133,7 +151,7 @@ class StudentDashboardScreen extends StatelessWidget {
                             child: Text(
                               'Progress',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.95),
+                                color: Colors.white.withValues(alpha: 0.95),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -153,25 +171,12 @@ class StudentDashboardScreen extends StatelessWidget {
 
                           const SizedBox(height: 18),
 
-                          _PanelCard(
-                            child: StudentGameLogsList(
-                              uid: uid,
-                              onOpenLog: (logId) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => StudentGameLogDetailScreen(uid: uid, logId: logId),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
                               'Past games',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.95),
+                                color: Colors.white.withValues(alpha: 0.95),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -220,12 +225,12 @@ class _PanelCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         // More solid than glass so charts are readable
-        color: const Color(0xFF0B1026).withOpacity(0.85),
+        color: const Color(0xFF0B1026).withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.22), width: 1.2),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.45),
+            color: Colors.black.withValues(alpha: 0.45),
             blurRadius: 22,
             offset: const Offset(0, 12),
           ),
@@ -266,17 +271,17 @@ class _ProfileCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.white.withOpacity(0.26),
-                      Colors.white.withOpacity(0.10),
-                      Colors.white.withOpacity(0.06),
+                      Colors.white.withValues(alpha: 0.26),
+                      Colors.white.withValues(alpha: 0.10),
+                      Colors.white.withValues(alpha: 0.06),
                     ],
                   ),
-                  border: Border.all(color: Colors.white.withOpacity(0.22)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '🪐',
-                  style: TextStyle(fontSize: 28, color: Colors.white.withOpacity(0.95)),
+                  style: TextStyle(fontSize: 28, color: Colors.white.withValues(alpha: 0.95)),
                 ),
               ),
               const SizedBox(width: 14),
@@ -301,7 +306,7 @@ class _ProfileCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.80),
+                        color: Colors.white.withValues(alpha: 0.80),
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                         height: 1.1,
@@ -335,14 +340,14 @@ class _MiniChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
+        color: Colors.white.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withOpacity(0.18)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.92),
+          color: Colors.white.withValues(alpha: 0.92),
           fontWeight: FontWeight.w800,
           fontSize: 12,
         ),
@@ -363,12 +368,12 @@ class _GlassCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
+        color: Colors.white.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.18)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.28),
+            color: Colors.black.withValues(alpha: 0.28),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -393,9 +398,9 @@ class _GlassIconButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
+          color: Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withOpacity(0.18)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         ),
         child: Icon(icon, color: Colors.white),
       ),
@@ -420,7 +425,7 @@ class _StarFieldPainter extends CustomPainter {
       final r = rnd.nextDouble() * 1.4 + 0.4;
       final alpha = (rnd.nextDouble() * 0.55 + 0.12);
 
-      paint.color = Colors.white.withOpacity(alpha);
+      paint.color = Colors.white.withValues(alpha: alpha);
       canvas.drawCircle(Offset(dx, dy), r, paint);
     }
 
@@ -429,7 +434,7 @@ class _StarFieldPainter extends CustomPainter {
       final dy = rnd.nextDouble() * size.height;
       final r = rnd.nextDouble() * 2.0 + 1.2;
 
-      paint.color = Colors.white.withOpacity(0.55);
+      paint.color = Colors.white.withValues(alpha: 0.55);
       canvas.drawCircle(Offset(dx, dy), r, paint);
     }
   }
