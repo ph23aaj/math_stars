@@ -31,7 +31,7 @@ class _Q {
   });
 }
 
-class _GamePlayScreenState extends State<GamePlayScreen> {
+class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin {
   static const int totalQuestions = 5;
 
   // Game mapping: 1=addition, 2=subtraction, 3=multiplication, 4=division
@@ -67,6 +67,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     if (_isDivision) return a ~/ b;
     return a + b;
   }
+
+  late final AnimationController _sparkleCtrl;
+  late final AnimationController _shakeCtrl;
+
+  final Random _sparkleRnd = Random(42);
 
   // ---------------- Difficulty helpers ----------------
 
@@ -173,6 +178,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   void initState() {
     super.initState();
     _initLogAndStart();
+    _sparkleCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 360),
+    );
+
+    _initLogAndStart();
   }
 
   Future<void> _initLogAndStart() async {
@@ -240,6 +256,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   void _enter() {
     final int? parsed = int.tryParse(answer);
     final bool isCorrect = (parsed != null && parsed == correctAnswer);
+
+    if (isCorrect) {
+      _playSparkles();
+    } else {
+      _playShake();
+    }
 
     _submitAttempt(
       isCorrect: isCorrect,
@@ -415,6 +437,21 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   @override
+  void dispose() {
+    _sparkleCtrl.dispose();
+    _shakeCtrl.dispose();
+    super.dispose();
+  }
+
+  void _playSparkles() {
+    _sparkleCtrl.forward(from: 0);
+  }
+
+  void _playShake() {
+    _shakeCtrl.forward(from: 0);
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (!_ready || _current == null) {
       return const Scaffold(
@@ -497,20 +534,55 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                         ),
                         const SizedBox(height: 18),
 
-                        Text(
-                          '$a $_opSymbol $b = ?',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 44,
-                            fontWeight: FontWeight.w900,
-                            height: 1.0,
-                          ),
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Sparkles behind
+                            IgnorePointer(
+                              child: AnimatedBuilder(
+                                animation: _sparkleCtrl,
+                                builder: (_, __) {
+                                  return CustomPaint(
+                                    size: const Size(280, 110),
+                                    painter: _SparkleBurstPainter(
+                                      t: _sparkleCtrl.value,
+                                      seed: 11,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+
+                            // The question text on top
+                            Text(
+                              '$a $_opSymbol $b = ?',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 44,
+                                fontWeight: FontWeight.w900,
+                                height: 1.0,
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(height: 14),
 
-                        _AnswerBox(text: answer),
+                        AnimatedBuilder(
+                          animation: _shakeCtrl,
+                          builder: (context, child) {
+                            // Decaying shake: 0 -> 1
+                            final t = _shakeCtrl.value;
+                            final amp = (1.0 - t) * 10.0; // max pixels
+                            final dx = sin(t * pi * 10) * amp; // oscillation
+                            return Transform.translate(
+                              offset: Offset(dx, 0),
+                              child: child,
+                            );
+                          },
+                          child: _AnswerBox(text: answer),
+                        ),
                       ],
                     ),
                   ),
@@ -812,4 +884,58 @@ class _StarFieldPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _SparkleBurstPainter extends CustomPainter {
+  _SparkleBurstPainter({
+    required this.t,
+    required this.seed,
+  });
+
+  final double t; // 0..1
+  final int seed;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (t <= 0) return;
+
+    // Burst expands then fades
+    final progress = Curves.easeOutCubic.transform(t);
+    final fade = (1.0 - t).clamp(0.0, 1.0);
+
+    final rnd = Random(seed);
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // Two colours: warm + cool sparkles
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 26; i++) {
+      final angle = rnd.nextDouble() * pi * 2;
+      final dist = (rnd.nextDouble() * 42 + 12) * progress; // expand
+      final x = cx + cos(angle) * dist;
+      final y = cy + sin(angle) * dist;
+
+      final r = (rnd.nextDouble() * 2.4 + 1.0) * (1.0 - t * 0.6);
+      final isWarm = rnd.nextBool();
+
+      paint.color = (isWarm ? const Color(0xFFFFD166) : const Color(0xFF9FD3FF))
+          .withValues(alpha: 0.75 * fade);
+
+      canvas.drawCircle(Offset(x, y), r, paint);
+    }
+
+    // A soft glow ring
+    final glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..color = const Color(0xFFFFD166).withValues(alpha: 0.22 * fade);
+
+    canvas.drawCircle(Offset(cx, cy), 18 + 34 * progress, glow);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparkleBurstPainter oldDelegate) {
+    return oldDelegate.t != t || oldDelegate.seed != seed;
+  }
 }
