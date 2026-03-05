@@ -45,33 +45,63 @@ class _AccuracyLineChartCardState extends State<AccuracyLineChartCard> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.black54),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.10), // glass
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Accuracy trend',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: Colors.white.withValues(alpha: 0.95),
+            ),
           ),
           const SizedBox(height: 10),
 
           Row(
             children: [
-              const Text('Game:', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text(
+                'Game:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white.withValues(alpha: 0.90),
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
-                child: DropdownButton<String?>(
-                  value: _selectedGameId,
-                  isExpanded: true,
-                  items: _options.entries
-                      .map((e) => DropdownMenuItem<String?>(
-                    value: e.key,
-                    child: Text(e.value),
-                  ))
-                      .toList(),
-                  onChanged: (v) => setState(() => _selectedGameId = v),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                  ),
+                  child: DropdownButton<String?>(
+                    value: _selectedGameId,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF0B1026),
+                    underline: const SizedBox.shrink(),
+                    iconEnabledColor: Colors.white.withValues(alpha: 0.9),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.95)),
+                    items: _options.entries
+                        .map((e) => DropdownMenuItem<String?>(
+                      value: e.key,
+                      child: Text(e.value),
+                    ))
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedGameId = v),
+                  ),
                 ),
               ),
             ],
@@ -145,7 +175,10 @@ class _AccuracyLineChartCardState extends State<AccuracyLineChartCard> {
                           showTitles: true,
                           reservedSize: 40,
                           interval: 25,
-                          getTitlesWidget: (v, meta) => Text('${v.round()}%'),
+                          getTitlesWidget: (v, meta) => Text(
+                            '${v.round()}%',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 11),
+                          ),
                         ),
                       ),
                       bottomTitles: AxisTitles(
@@ -158,7 +191,14 @@ class _AccuracyLineChartCardState extends State<AccuracyLineChartCard> {
                             final dt = points[idx].time;
                             final dd = dt.day.toString().padLeft(2, '0');
                             final mm = dt.month.toString().padLeft(2, '0');
-                            return Text('$dd/$mm', style: const TextStyle(fontSize: 10));
+                            return Text(
+                              '$dd/$mm',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.white.withValues(alpha: 0.80),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            );
                           },
                         ),
                       ),
@@ -178,9 +218,9 @@ class _AccuracyLineChartCardState extends State<AccuracyLineChartCard> {
           ),
 
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Tip: Try to keep the line trending upwards over time.',
-            style: TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.75)),
           ),
         ],
       ),
