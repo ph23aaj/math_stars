@@ -239,7 +239,6 @@ class AuthService {
         'childUsername': childLower,
         'childFirstName': childFirstName,
         'childLastName': childLastName,
-
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -250,15 +249,6 @@ class AuthService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      batch.set(
-        _db.collection('parents').doc(parentUid).collection('children').doc(childUid),
-        {
-          'childUid': childUid,
-          'childUsername': childLower,
-          'linkedAt': FieldValue.serverTimestamp(),
-        },
-      );
-
       final studentDoc =
       await _db.collection('students').doc(childUid).get();
 
@@ -266,22 +256,14 @@ class AuthService {
       final firstName = (studentData['firstName'] ?? '').toString();
       final lastName = (studentData['lastName'] ?? '').toString();
 
-      batch.set(
-        _db
-            .collection('parents')
-            .doc(parentUid)
-            .collection('children')
-            .doc(childUid),
+      batch.set(_db.collection('parents').doc(parentUid).collection('children').doc(childUid),
         {
           'childUid': childUid,
           'childUsername': childLower,
           'childFirstName': firstName,
           'childLastName': lastName,
           'linkedAt': FieldValue.serverTimestamp(),
-        },
-      );
-
-
+        },);
 
       await batch.commit();
       return cred;
