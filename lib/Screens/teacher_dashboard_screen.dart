@@ -85,7 +85,7 @@ class TeacherDashboardScreen extends StatelessWidget {
                       Row(
                         children: [
                           _GlassIconButton(
-                            icon: Icons.home_outlined,
+                            icon: Icons.arrow_back,
                             onTap: () => Navigator.pop(context),
                           ),
                           const SizedBox(width: 12),
@@ -328,6 +328,8 @@ class _GlassCard extends StatelessWidget {
     );
   }
 }
+
+// ------------------ ICON BUTTON ------------------
 
 class _GlassIconButton extends StatelessWidget {
   const _GlassIconButton({required this.icon, required this.onTap});

@@ -60,34 +60,30 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                   // Top row
                   Row(
                     children: [
-                      Container(
-                        width: 44,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withOpacity(0.18)),
-                        ),
-                        child: const Icon(Icons.public, color: Colors.white),
+                      _GlassIconButton(
+                        icon: Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
                       ),
-                      const Spacer(),
-                      const Text(
-                        'Choose your mission',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
+
+                      const SizedBox(width: 12),
+
+                      const Expanded(
+                        child: Text(
+                          'Choose your mission',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const HomeScreen()),
-                                (route) => false,
-                          );
-                        },
-                        icon: const Icon(Icons.home, color: Colors.white),
+
+                      const SizedBox(width: 12),
+
+                      _GlassIconButton(
+                        icon: Icons.settings_outlined,
+                        onTap: () {},
                       ),
                     ],
                   ),
@@ -404,6 +400,32 @@ class _GamePlanetTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ------------------ ICON BUTTON ------------------
+
+class _GlassIconButton extends StatelessWidget {
+  const _GlassIconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: Icon(icon, color: Colors.white),
       ),
     );
   }

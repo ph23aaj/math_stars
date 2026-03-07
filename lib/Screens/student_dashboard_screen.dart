@@ -61,7 +61,7 @@ class StudentDashboardScreen extends StatelessWidget {
                   Row(
                     children: [
                       _GlassIconButton(
-                        icon: Icons.home_outlined,
+                        icon: Icons.arrow_back,
                         onTap: () => Navigator.pop(context),
                       ),
                       const SizedBox(width: 12),

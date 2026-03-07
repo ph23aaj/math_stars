@@ -57,7 +57,7 @@ class ParentDashboardScreen extends StatelessWidget {
                   Row(
                     children: [
                       _GlassIconButton(
-                        icon: Icons.home_outlined,
+                        icon: Icons.arrow_back,
                         onTap: () => Navigator.pop(context),
                       ),
                       const SizedBox(width: 12),
@@ -276,10 +276,7 @@ class _PanelCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF0B1026).withValues(alpha: 0.86),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.20),
-          width: 1.2,
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.20), width: 1.2,),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.45),
