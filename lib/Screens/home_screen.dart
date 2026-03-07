@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
@@ -7,6 +6,7 @@ import 'package:math_stars/Services/auth-service.dart';
 import 'teacher_dashboard_screen.dart';
 import 'student_dashboard_screen.dart';
 import 'parent_dashboard_screen.dart';
+import 'package:math_stars/Widgets/ui_cards.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -39,30 +39,9 @@ class HomeScreen extends StatelessWidget {
           final isParent = role == 'parent';
 
           return Stack(
-            children: [
-              // ----- SPACE BACKGROUND -----
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF0B1026), // deep space
-                      Color(0xFF1A2A6C), // blue/purple
-                      Color(0xFF2B1055), // nebula purple
-                    ],
-                  ),
-                ),
-              ),
-
-              // ----- STAR OVERLAY (no assets needed) -----
-              const Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _StarFieldPainter(),
-                  ),
-                ),
-              ),
+              children: [
+              // Background gradient and Stars overlay
+              const SpaceBackground(),
 
               // ----- PLANETS (soft blobs) -----
               Positioned(
@@ -70,7 +49,7 @@ class HomeScreen extends StatelessWidget {
                 left: -40,
                 child: _PlanetBlob(
                   size: 160,
-                  color: const Color(0xFF3A86FF).withOpacity(0.25),
+                  color: const Color(0xFF3A86FF).withValues(alpha: 0.25),
                 ),
               ),
               Positioned(
@@ -78,7 +57,7 @@ class HomeScreen extends StatelessWidget {
                 right: -60,
                 child: _PlanetBlob(
                   size: 220,
-                  color: const Color(0xFFF72585).withOpacity(0.18),
+                  color: const Color(0xFFF72585).withValues(alpha: 0.18),
                 ),
               ),
 
@@ -95,9 +74,9 @@ class HomeScreen extends StatelessWidget {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.12),
+                              color: Colors.white.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withOpacity(0.18)),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                             ),
                             child: const Icon(Icons.rocket_launch, color: Colors.white),
                           ),
@@ -128,12 +107,12 @@ class HomeScreen extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.10),
+                          color: Colors.white.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(26),
-                          border: Border.all(color: Colors.white.withOpacity(0.18)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.30),
+                              color: Colors.black.withValues(alpha: 0.30),
                               blurRadius: 30,
                               offset: const Offset(0, 12),
                             ),
@@ -144,7 +123,7 @@ class HomeScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.10),
+                                color: Colors.white.withValues(alpha: 0.10),
                                 borderRadius: BorderRadius.circular(22),
                               ),
                               child: Image.asset(
@@ -188,7 +167,7 @@ class HomeScreen extends StatelessWidget {
                         _BigSpaceButton(
                           text: 'Launch Mission',
                           emoji: '🚀',
-                          fill: const Color(0xFFFFD166), // warm star yellow
+                          fill: const Color(0xFFFFD166), // yellow button
                           textColor: Colors.black,
                           onTap: () {
                             Navigator.of(context).push(
@@ -207,7 +186,7 @@ class HomeScreen extends StatelessWidget {
                             ? 'Parent Dashboard'
                             : 'Mission Progress',
                         emoji: '📈',
-                        fill: Colors.white.withOpacity(0.10),
+                        fill: Colors.white.withValues(alpha: 0.10),
                         textColor: Colors.white,
                         outline: true,
                         onTap: () {
@@ -233,7 +212,7 @@ class HomeScreen extends StatelessWidget {
                       _BigSpaceButton(
                         text: 'Log out',
                         emoji: '🚀',
-                        fill: Colors.white.withOpacity(0.08),
+                        fill: Colors.white.withValues(alpha: 0.08),
                         textColor: Colors.white70,
                         outline: true,
                         onTap: () async {
@@ -287,11 +266,11 @@ class _BigSpaceButton extends StatelessWidget {
           backgroundColor: fill,
           foregroundColor: textColor,
           elevation: outline ? 0 : 14,
-          shadowColor: Colors.black.withOpacity(0.35),
+          shadowColor: Colors.black.withValues(alpha: 0.35),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
             side: outline
-                ? BorderSide(color: Colors.white.withOpacity(0.22), width: 1.2)
+                ? BorderSide(color: Colors.white.withValues(alpha:0.22), width: 1.2)
                 : BorderSide.none,
           ),
         ),
@@ -331,39 +310,4 @@ class _PlanetBlob extends StatelessWidget {
       ),
     );
   }
-}
-
-// Procedural starfield (static) — no assets required
-class _StarFieldPainter extends CustomPainter {
-  const _StarFieldPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rnd = Random(7); // fixed seed = stable stars
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    // Lots of small stars
-    for (int i = 0; i < 180; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-
-      final r = rnd.nextDouble() * 1.4 + 0.4; // radius
-      final alpha = (rnd.nextDouble() * 0.55 + 0.15); // 0.15..0.70
-
-      paint.color = Colors.white.withOpacity(alpha);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-
-    // A few bigger “sparkle” stars
-    for (int i = 0; i < 18; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-      final r = rnd.nextDouble() * 2.2 + 1.2;
-      paint.color = Colors.white.withOpacity(0.55);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

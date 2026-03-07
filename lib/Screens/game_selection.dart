@@ -1,6 +1,5 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
+import 'package:math_stars/Widgets/ui_cards.dart';
 import 'game_play_screen.dart';
 
 class GameSelectionScreen extends StatefulWidget {
@@ -28,27 +27,8 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0B1026),
-                  Color(0xFF1A2A6C),
-                  Color(0xFF2B1055),
-                ],
-              ),
-            ),
-          ),
-
-          // Stars overlay
-          const Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(painter: _StarFieldPainter()),
-            ),
-          ),
+          // Background gradient and Stars overlay
+          const SpaceBackground(),
 
           SafeArea(
             child: SingleChildScrollView(
@@ -60,7 +40,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                   // Top row
                   Row(
                     children: [
-                      _GlassIconButton(
+                      GlassIconButton(
                         icon: Icons.arrow_back,
                         onTap: () => Navigator.pop(context),
                       ),
@@ -81,7 +61,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
 
                       const SizedBox(width: 12),
 
-                      _GlassIconButton(
+                      GlassIconButton(
                         icon: Icons.settings_outlined,
                         onTap: () {},
                       ),
@@ -219,7 +199,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                     canPlay ? 'Ready for take-off!' : 'Choose a planet + a world to start.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.75),
+                      color: Colors.white.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -272,10 +252,10 @@ class _LevelPlanet extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(isSelected ? 0.16 : 0.10),
+          color: Colors.white.withValues(alpha: isSelected ? 0.16 : 0.10),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: isSelected ? const Color(0xFFFFD166) : Colors.white.withOpacity(0.18),
+            color: isSelected ? const Color(0xFFFFD166) : Colors.white.withValues(alpha: 0.18),
             width: isSelected ? 2.2 : 1.1,
           ),
         ),
@@ -288,15 +268,15 @@ class _LevelPlanet extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    planet.withOpacity(0.95),
-                    planet.withOpacity(0.45),
-                    planet.withOpacity(0.20),
+                    planet.withValues(alpha:0.95),
+                    planet.withValues(alpha:0.45),
+                    planet.withValues(alpha:0.20),
                   ],
                 ),
                 boxShadow: [
                   if (isSelected)
                     BoxShadow(
-                      color: const Color(0xFFFFD166).withOpacity(0.55),
+                      color: const Color(0xFFFFD166).withValues(alpha:0.55),
                       blurRadius: 18,
                       spreadRadius: 1,
                     ),
@@ -344,15 +324,15 @@ class _GamePlanetTile extends StatelessWidget {
         height: 158, // small buffer to prevent micro-overflow
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(isSelected ? 0.16 : 0.10),
+          color: Colors.white.withValues(alpha: isSelected ? 0.16 : 0.10),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isSelected ? const Color(0xFFFFD166) : Colors.white.withOpacity(0.18),
+            color: isSelected ? const Color(0xFFFFD166) : Colors.white.withValues(alpha: 0.18),
             width: isSelected ? 2.2 : 1.1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -367,8 +347,8 @@ class _GamePlanetTile extends StatelessWidget {
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.12),
-                border: Border.all(color: Colors.white.withOpacity(0.18)),
+                color: Colors.white.withValues(alpha: 0.12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
               ),
               alignment: Alignment.center,
               child: Text(emoji, style: const TextStyle(fontSize: 26)),
@@ -392,7 +372,7 @@ class _GamePlanetTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.72),
+                color: Colors.white.withValues(alpha: 0.72),
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
                 height: 1.1,
@@ -403,65 +383,4 @@ class _GamePlanetTile extends StatelessWidget {
       ),
     );
   }
-}
-
-// ------------------ ICON BUTTON ------------------
-
-class _GlassIconButton extends StatelessWidget {
-  const _GlassIconButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        ),
-        child: Icon(icon, color: Colors.white),
-      ),
-    );
-  }
-}
-
-// ------------------ STARS ------------------
-
-class _StarFieldPainter extends CustomPainter {
-  const _StarFieldPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rnd = Random(11);
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    for (int i = 0; i < 190; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-
-      final r = rnd.nextDouble() * 1.4 + 0.4;
-      final alpha = (rnd.nextDouble() * 0.55 + 0.12);
-
-      paint.color = Colors.white.withOpacity(alpha);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-
-    for (int i = 0; i < 16; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-      final r = rnd.nextDouble() * 2.0 + 1.2;
-
-      paint.color = Colors.white.withOpacity(0.55);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

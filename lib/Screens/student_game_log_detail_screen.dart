@@ -1,6 +1,6 @@
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:math_stars/Widgets/ui_cards.dart';
 
 class StudentGameLogDetailScreen extends StatelessWidget {
   const StudentGameLogDetailScreen({
@@ -30,27 +30,8 @@ class StudentGameLogDetailScreen extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // Background gradient (space)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0B1026),
-                  Color(0xFF1A2A6C),
-                  Color(0xFF2B1055),
-                ],
-              ),
-            ),
-          ),
-
-          // Stars overlay
-          const Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(painter: _StarFieldPainter()),
-            ),
-          ),
+          // Background gradient and Stars overlay
+          const SpaceBackground(),
 
           SafeArea(
             child: StreamBuilder<DocumentSnapshot>(
@@ -108,7 +89,7 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
                   children: [
-                    _GlassCard(
+                    GlassCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -171,7 +152,7 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     if (questions.isEmpty)
-                      _GlassCard(
+                      GlassCard(
                         child: Text(
                           'No questions recorded yet.',
                           style: TextStyle(
@@ -219,7 +200,7 @@ class StudentGameLogDetailScreen extends StatelessWidget {
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _GlassCard(
+                        child: GlassCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -269,34 +250,6 @@ class StudentGameLogDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ------------------ UI HELPERS ------------------
-
-class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 }
@@ -432,39 +385,4 @@ class _ResultPill extends StatelessWidget {
       ),
     );
   }
-}
-
-// ------------------ STARS ------------------
-
-class _StarFieldPainter extends CustomPainter {
-  const _StarFieldPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rnd = Random(11);
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    for (int i = 0; i < 190; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-
-      final r = rnd.nextDouble() * 1.4 + 0.4;
-      final alpha = (rnd.nextDouble() * 0.55 + 0.12);
-
-      paint.color = Colors.white.withValues(alpha: alpha);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-
-    for (int i = 0; i < 16; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-      final r = rnd.nextDouble() * 2.0 + 1.2;
-
-      paint.color = Colors.white.withValues(alpha: 0.55);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../Services/game_log_service.dart';
+import 'package:math_stars/Widgets/ui_cards.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final int level; // 1, 2, 3
@@ -464,27 +465,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient (space)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0B1026),
-                  Color(0xFF1A2A6C),
-                  Color(0xFF2B1055),
-                ],
-              ),
-            ),
-          ),
-
-          // Stars overlay
-          const Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(painter: _StarFieldPainter()),
-            ),
-          ),
+          // Background gradient and Stars overlay
+          const SpaceBackground(),
 
           SafeArea(
             child: Padding(
@@ -494,7 +476,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   // ---------- TOP BAR ----------
                   Row(
                     children: [
-                      _GlassIconButton(
+                      GlassIconButton(
                         icon: Icons.close,
                         onTap: _confirmExit,
                       ),
@@ -522,7 +504,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   const SizedBox(height: 14),
 
                   // ---------- GAME AREA ----------
-                  _GlassCard(
+                  GlassCard(
                     child: Column(
                       children: [
                         Row(
@@ -541,7 +523,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                             IgnorePointer(
                               child: AnimatedBuilder(
                                 animation: _sparkleCtrl,
-                                builder: (_, __) {
+                                builder: (_, _) {
                                   return CustomPaint(
                                     size: const Size(280, 110),
                                     painter: _SparkleBurstPainter(
@@ -613,57 +595,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ------------------ SPACE UI WIDGETS ------------------
-
-class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.30),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _GlassIconButton extends StatelessWidget {
-  const _GlassIconButton({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        ),
-        child: Icon(icon, color: Colors.white),
       ),
     );
   }
@@ -851,40 +782,6 @@ class _Keypad extends StatelessWidget {
   }
 }
 
-// ------------------ STARS ------------------
-
-class _StarFieldPainter extends CustomPainter {
-  const _StarFieldPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rnd = Random(11);
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    for (int i = 0; i < 190; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-
-      final r = rnd.nextDouble() * 1.4 + 0.4;
-      final alpha = (rnd.nextDouble() * 0.55 + 0.12);
-
-      paint.color = Colors.white.withValues(alpha: alpha);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-
-    for (int i = 0; i < 16; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-      final r = rnd.nextDouble() * 2.0 + 1.2;
-
-      paint.color = Colors.white.withValues(alpha: 0.55);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 class _SparkleBurstPainter extends CustomPainter {
   _SparkleBurstPainter({

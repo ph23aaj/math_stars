@@ -1,12 +1,9 @@
-import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:math_stars/Widgets/ui_cards.dart';
 import 'student_game_logs_list.dart';
 import 'student_game_log_detail_screen.dart';
-
 import '../Widgets/game_accuracy_pie_grid.dart';
 import '../Widgets/accuracy_line_chart_card.dart';
 
@@ -26,27 +23,8 @@ class StudentDashboardScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient (space)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0B1026),
-                  Color(0xFF1A2A6C),
-                  Color(0xFF2B1055),
-                ],
-              ),
-            ),
-          ),
-
-          // Stars overlay
-          const Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(painter: _StarFieldPainter()),
-            ),
-          ),
+          // Background gradient and Stars overlay
+          const SpaceBackground(),
 
           SafeArea(
             child: uid == null
@@ -60,7 +38,7 @@ class StudentDashboardScreen extends StatelessWidget {
                   // TOP BAR
                   Row(
                     children: [
-                      _GlassIconButton(
+                      GlassIconButton(
                         icon: Icons.arrow_back,
                         onTap: () => Navigator.pop(context),
                       ),
@@ -77,7 +55,7 @@ class StudentDashboardScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      _GlassIconButton(
+                      GlassIconButton(
                         icon: Icons.settings_outlined,
                         onTap: () {
                           // TODO: settings later
@@ -105,7 +83,7 @@ class StudentDashboardScreen extends StatelessWidget {
                           Center(
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 680),
-                              child: _GlassCard(
+                              child: GlassCard(
                                 child: SizedBox(
                                   height: 254,
                                   child: Column(
@@ -157,18 +135,14 @@ class StudentDashboardScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 10),
 
-                          // Your existing chart cards
-                          // If these widgets have white backgrounds, they’ll still look fine here.
-                          // (Later, we can “space theme” them too if you want.)
+                          // Chart card
                           AccuracyLineChartCard(uid: uid),
-
                           const SizedBox(height: 14),
 
+                          // Pie charts
                           GameAccuracyPieGrid(uid: uid),
-
                           const SizedBox(height: 18),
 
                           Align(
@@ -186,7 +160,7 @@ class StudentDashboardScreen extends StatelessWidget {
                           const SizedBox(height: 10),
 
                           // Wrap logs list in a glass container so it matches theme
-                          _GlassCard(
+                          GlassCard(
                             child: StudentGameLogsList(
                               uid: uid,
                               onOpenLog: (logId) {
@@ -212,34 +186,6 @@ class StudentDashboardScreen extends StatelessWidget {
   }
 }
 
-// ------------------ PROFILE CARD ------------------
-
-class _PanelCard extends StatelessWidget {
-  const _PanelCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        // More solid than glass so charts are readable
-        color: const Color(0xFF0B1026).withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
 
 class _ProfileCard extends StatelessWidget {
   const _ProfileCard({required this.uid});
@@ -260,7 +206,7 @@ class _ProfileCard extends StatelessWidget {
 
         final displayName = ('$firstName $lastName').trim().isEmpty ? 'Student' : ('$firstName $lastName').trim();
 
-        return _GlassCard(
+        return GlassCard(
           child: Row(
             children: [
               // Avatar “planet”
@@ -347,91 +293,4 @@ class _MiniChip extends StatelessWidget {
       ),
     );
   }
-}
-
-// ------------------ GLASS UI HELPERS ------------------
-
-class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _GlassIconButton extends StatelessWidget {
-  const _GlassIconButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        ),
-        child: Icon(icon, color: Colors.white),
-      ),
-    );
-  }
-}
-
-// ------------------ STARS ------------------
-
-class _StarFieldPainter extends CustomPainter {
-  const _StarFieldPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rnd = Random(11);
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    for (int i = 0; i < 190; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-
-      final r = rnd.nextDouble() * 1.4 + 0.4;
-      final alpha = (rnd.nextDouble() * 0.55 + 0.12);
-
-      paint.color = Colors.white.withValues(alpha: alpha);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-
-    for (int i = 0; i < 16; i++) {
-      final dx = rnd.nextDouble() * size.width;
-      final dy = rnd.nextDouble() * size.height;
-      final r = rnd.nextDouble() * 2.0 + 1.2;
-
-      paint.color = Colors.white.withValues(alpha: 0.55);
-      canvas.drawCircle(Offset(dx, dy), r, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
