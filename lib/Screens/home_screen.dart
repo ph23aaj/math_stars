@@ -135,7 +135,7 @@ class HomeScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              'Hey Astronaut!',
+                              'Hey Astronaut!!!',
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
