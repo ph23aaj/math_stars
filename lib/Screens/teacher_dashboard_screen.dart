@@ -217,7 +217,7 @@ class TeacherDashboardScreen extends StatelessWidget {
                                       ),
                                     ),
                                     subtitle: Text(
-                                      'Tap to view progress (coming next)',
+                                      'Tap to view progress',
                                       style: TextStyle(
                                         color: Colors.white.withValues(alpha: 0.70),
                                         fontWeight: FontWeight.w600,
