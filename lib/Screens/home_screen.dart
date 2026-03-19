@@ -127,7 +127,7 @@ class HomeScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(22),
                               ),
                               child: Image.asset(
-                                'assets/images/project_logo.png',
+                                'assets/images/project_logo6.png',
                                 width: 140,
                                 height: 140,
                                 fit: BoxFit.contain,
@@ -135,7 +135,7 @@ class HomeScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              'Hey Astronaut!!!',
+                              'Hey Astronaut!',
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
