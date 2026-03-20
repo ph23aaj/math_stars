@@ -70,32 +70,20 @@ class HomeScreen extends StatelessWidget {
                       // Header
                       Row(
                         children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                            ),
-                            child: const Icon(Icons.rocket_launch, color: Colors.white),
-                          ),
-                          const Spacer(),
-                          const Text(
-                            'Maths Stars',
-                            style: TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            onPressed: () {
-                              // TODO: settings
+                          GlassIconButton(
+                            icon: Icons.rocket_launch,
+                            onTap: () {
+                              // ToDo: Avatar Screen
                             },
-                            icon: const Icon(Icons.settings, color: Colors.white),
+                          ),
+
+                          const Spacer(),
+
+                          GlassIconButton(
+                            icon: Icons.settings_outlined,
+                            onTap: () {
+                              // ToDo: Settings
+                            },
                           ),
                         ],
                       ),
@@ -103,37 +91,17 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       // Mission card (more playful)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(26),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.30),
-                              blurRadius: 30,
-                              offset: const Offset(0, 12),
-                            ),
-                          ],
-                        ),
+                      Center(
                         child: Column(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(22),
-                              ),
-                              child: Image.asset(
+                              Image.asset(
                                 'assets/images/project_logo6.png',
-                                width: 140,
-                                height: 140,
+                                width: 420,
+                                height: 220,
                                 fit: BoxFit.contain,
                               ),
-                            ),
-                            const SizedBox(height: 12),
+
+                            const SizedBox(height: 0),
                             const Text(
                               'Hey Astronaut!',
                               style: TextStyle(
@@ -213,7 +181,7 @@ class HomeScreen extends StatelessWidget {
                         text: 'Log out',
                         emoji: '🚀',
                         fill: Colors.white.withValues(alpha: 0.08),
-                        textColor: Colors.white70,
+                        textColor: Colors.white,
                         outline: true,
                         onTap: () async {
                           await AuthService().signOut();
