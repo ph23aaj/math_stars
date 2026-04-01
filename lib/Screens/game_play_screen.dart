@@ -178,7 +178,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    _initLogAndStart();
     _sparkleCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 520),
