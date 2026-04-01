@@ -14,10 +14,10 @@ enum _Range { week, month, sixMonths }
 
 class _GameAccuracyPieGridState extends State<GameAccuracyPieGrid> {
   static const _games = <_GameMeta>[
-    _GameMeta('timed_addition', 'Addition'),
-    _GameMeta('timed_subtraction', 'Subtraction'),
-    _GameMeta('timed_multiplication', 'Multiplication'),
-    _GameMeta('timed_division', 'Division'),
+    _GameMeta('addition', 'Addition'),
+    _GameMeta('subtraction', 'Subtraction'),
+    _GameMeta('multiplication', 'Multiplication'),
+    _GameMeta('division', 'Division'),
   ];
 
   _Range _range = _Range.week;
@@ -270,7 +270,11 @@ class _AccuracyPieCardState extends State<_AccuracyPieCard> {
             children: [
               Text(
                 widget.title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 2),
               Text(

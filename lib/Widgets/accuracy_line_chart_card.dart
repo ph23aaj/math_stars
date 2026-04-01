@@ -15,10 +15,10 @@ class _AccuracyLineChartCardState extends State<AccuracyLineChartCard> {
 
   final Map<String?, String> _options = const {
     null: 'All games',
-    'timed_addition': 'Addition',
-    'timed_subtraction': 'Subtraction',
-    'timed_multiplication': 'Multiplication',
-    'timed_division': 'Division',
+    'addition': 'Addition',
+    'subtraction': 'Subtraction',
+    'multiplication': 'Multiplication',
+    'division': 'Division',
   };
 
   Query<Map<String, dynamic>> _query() {
