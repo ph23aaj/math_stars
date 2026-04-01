@@ -16,6 +16,8 @@ class AuthService {
   String _emailForUsername(String usernameLower) =>
       '$usernameLower@mathsstars.local';
 
+  // ─── SIGN IN ────────────────────────────────────────────────────────────────
+
   Future<UserCredential> signInWithUsername({
     required String username,
     required String password,
@@ -29,6 +31,38 @@ class AuthService {
     );
   }
 
+  // ─── SIGN OUT ───────────────────────────────────────────────────────────────
+
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+
+  // ─── CURRENT USER ───────────────────────────────────────────────────────────
+
+  User? get currentUser => _auth.currentUser;
+
+  // ─── FRIENDLY ERROR ─────────────────────────────────────────────────────────
+
+  String friendlyAuthError(Object e) {
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-credential':
+          return 'Incorrect username or password.';
+        case 'weak-password':
+          return 'Password is too weak.';
+        case 'email-already-in-use':
+          return 'That username is already registered.';
+        default:
+          return e.message ?? 'Authentication error. Please try again.';
+      }
+    }
+    return e.toString().replaceFirst('Exception: ', '');
+  }
+
+  // ─── STUDENT REGISTRATION ───────────────────────────────────────────────────
+
   Future<UserCredential> signUpStudentWithUsername({
     required String username,
     required String password,
@@ -41,7 +75,8 @@ class AuthService {
 
     final classDoc = await _db.collection('classes').doc(classId).get();
     if (!classDoc.exists) {
-      throw Exception('That class does not exist. Ask your teacher for the exact class name.');
+      throw Exception(
+          'That class does not exist. Ask your teacher for the exact class name.');
     }
 
     if (usernameLower.isEmpty) {
@@ -91,7 +126,6 @@ class AuthService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-
       batch.set(_db.collection('progress').doc(uid), {
         'totalGamesPlayed': 0,
         'totalCorrect': 0,
@@ -115,29 +149,7 @@ class AuthService {
     }
   }
 
-  String friendlyAuthError(Object e) {
-    if (e is FirebaseAuthException) {
-      switch (e.code) {
-        case 'user-not-found':
-        case 'wrong-password':
-        case 'invalid-credential':
-          return 'Incorrect username or password.';
-        case 'weak-password':
-          return 'Password is too weak.';
-        case 'email-already-in-use':
-          return 'That username is already registered.';
-        default:
-          return e.message ?? 'Authentication error. Please try again.';
-      }
-    }
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  User? get currentUser => _auth.currentUser;
+  // ─── PARENT REGISTRATION ────────────────────────────────────────────────────
 
   Future<UserCredential> signUpParentWithUsername({
     required String parentUsername,
@@ -155,11 +167,12 @@ class AuthService {
       throw Exception('Parent password/PIN must be at least 4 characters.');
     }
     if (childPassword.isEmpty) {
-      throw Exception('Please enter your child’s password/PIN.');
+      throw Exception('Please enter your child\'s password/PIN.');
     }
 
-    // 1) Verify child account exists by checking username mapping
-    final childUsernameDoc = await _db.collection('usernames').doc(childLower).get();
+    // 1) Verify child account exists via username mapping
+    final childUsernameDoc =
+    await _db.collection('usernames').doc(childLower).get();
     if (!childUsernameDoc.exists) {
       throw Exception('Child username not found.');
     }
@@ -167,34 +180,35 @@ class AuthService {
     final childUid = childUsernameDoc.data()?['uid'] as String?;
     final childRole = childUsernameDoc.data()?['role'] as String?;
 
-    // Fetch child's name from students/{childUid}
-    final studentSnap = await _db.collection('students').doc(childUid).get();
-    final studentData = studentSnap.data() ?? {};
-
-    final childFirstName = (studentData['firstName'] ?? '').toString().trim();
-    final childLastName = (studentData['lastName'] ?? '').toString().trim();
-
     if (childUid == null || childRole != 'student') {
       throw Exception('That child username is not a student account.');
     }
 
-    // 2) Verify the child's password/PIN is correct (sign in briefly)
+    // 2) Sign in as the child to verify their password AND read their profile
+    //    while authenticated as them — the only moment we have permission to
+    //    read the students/{childUid} document without being the parent yet.
     final childEmail = _emailForUsername(childLower);
-
-    User? currentBefore = _auth.currentUser;
+    String childFirstName = '';
+    String childLastName = '';
 
     try {
-      await _auth.signInWithEmailAndPassword(email: childEmail, password: childPassword);
+      await _auth.signInWithEmailAndPassword(
+          email: childEmail, password: childPassword);
+
+      // Read student profile now, while signed in as the child
+      final studentSnap =
+      await _db.collection('students').doc(childUid).get();
+      final studentData = studentSnap.data() ?? {};
+      childFirstName = (studentData['firstName'] ?? '').toString().trim();
+      childLastName = (studentData['lastName'] ?? '').toString().trim();
     } on FirebaseAuthException {
       throw Exception('Child username/password is incorrect.');
     } finally {
-      // Return to whatever auth state I had before verifying
+      // Always sign out before creating the parent account
       await _auth.signOut();
-      if (currentBefore != null) {
-      }
     }
 
-    // 3) Reserve parent username
+    // 3) Reserve parent username (runs unauthenticated — allowed by rules)
     final parentUsernameDoc = _db.collection('usernames').doc(parentLower);
 
     await _db.runTransaction((tx) async {
@@ -209,9 +223,8 @@ class AuthService {
     });
 
     try {
-      // 4) Create parent auth account
+      // 4) Create parent Firebase Auth account
       final parentEmail = _emailForUsername(parentLower);
-
       final cred = await _auth.createUserWithEmailAndPassword(
         email: parentEmail,
         password: parentPassword,
@@ -219,18 +232,18 @@ class AuthService {
 
       final parentUid = cred.user!.uid;
 
+      // 5) Batch write all parent documents.
+      //    Uses childFirstName/childLastName captured in step 2 —
+      //    no additional student reads needed here.
       final batch = _db.batch();
 
       batch.set(_db.collection('users').doc(parentUid), {
         'role': 'parent',
         'username': parentLower,
-
-        // If you want to keep single-child for now:
         'childUid': childUid,
         'childUsername': childLower,
         'childFirstName': childFirstName,
         'childLastName': childLastName,
-
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -242,28 +255,26 @@ class AuthService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      batch.set(
+        _db
+            .collection('parents')
+            .doc(parentUid)
+            .collection('children')
+            .doc(childUid),
+        {
+          'childUid': childUid,
+          'childUsername': childLower,
+          'childFirstName': childFirstName,
+          'childLastName': childLastName,
+          'linkedAt': FieldValue.serverTimestamp(),
+        },
+      );
 
       batch.set(parentUsernameDoc, {
         'uid': parentUid,
         'role': 'parent',
         'createdAt': FieldValue.serverTimestamp(),
       });
-
-      final studentDoc =
-      await _db.collection('students').doc(childUid).get();
-
-      final studentData = studentDoc.data() ?? {};
-      final firstName = (studentData['firstName'] ?? '').toString();
-      final lastName = (studentData['lastName'] ?? '').toString();
-
-      batch.set(_db.collection('parents').doc(parentUid).collection('children').doc(childUid),
-        {
-          'childUid': childUid,
-          'childUsername': childLower,
-          'childFirstName': firstName,
-          'childLastName': lastName,
-          'linkedAt': FieldValue.serverTimestamp(),
-        },);
 
       await batch.commit();
       return cred;
@@ -273,6 +284,7 @@ class AuthService {
     }
   }
 
+  // ─── TEACHER REGISTRATION ───────────────────────────────────────────────────
 
   Future<UserCredential> signUpTeacherWithUsername({
     required String username,
@@ -286,13 +298,13 @@ class AuthService {
     final classId = _normaliseClassName(classNameClean);
     final classDoc = _db.collection('classes').doc(classId);
 
-
-
     if (usernameLower.isEmpty) throw Exception('Username cannot be empty.');
     if (firstName.trim().isEmpty) throw Exception('First name cannot be empty.');
     if (lastName.trim().isEmpty) throw Exception('Last name cannot be empty.');
     if (classNameClean.isEmpty) throw Exception('Class name cannot be empty.');
-    if (password.length < 4) throw Exception('Password/PIN must be at least 4 characters.');
+    if (password.length < 4) {
+      throw Exception('Password/PIN must be at least 4 characters.');
+    }
 
     final usernameDoc = _db.collection('usernames').doc(usernameLower);
 
@@ -346,7 +358,6 @@ class AuthService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-
       batch.set(usernameDoc, {
         'uid': uid,
         'role': 'teacher',
@@ -361,7 +372,8 @@ class AuthService {
     }
   }
 
+  // ─── HELPERS ────────────────────────────────────────────────────────────────
+
   String _normaliseClassName(String className) =>
       className.trim().toLowerCase();
-
 }
