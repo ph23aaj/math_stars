@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../Services/game_log_service.dart';
 import 'package:math_stars/Widgets/ui_cards.dart';
+import '../Services/progress_service.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final int level; // 1, 2, 3
@@ -373,6 +374,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       } catch (e) {
         debugPrint('Failed to mark completed: $e');
       }
+    }
+
+    try {
+      await ProgressService().recordGameResultSimple(
+        gameId: _gameId,
+        correct: score,
+        incorrect: incorrect,
+        level: widget.level,
+      );
+    } catch (e) {
+      debugPrint('Failed to update progress: $e');
     }
 
     if (!mounted) return;

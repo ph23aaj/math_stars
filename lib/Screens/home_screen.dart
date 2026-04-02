@@ -179,7 +179,7 @@ class HomeScreen extends StatelessWidget {
                       // Log out
                       _BigSpaceButton(
                         text: 'Log out',
-                        emoji: '🚀',
+                        emoji: '',
                         fill: Colors.white.withValues(alpha: 0.08),
                         textColor: Colors.white,
                         outline: true,

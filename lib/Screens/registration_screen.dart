@@ -32,7 +32,6 @@ class RegistrationScreen extends StatelessWidget {
           ),
 
           SafeArea(
-            child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                 child: Column(
@@ -196,7 +195,6 @@ class RegistrationScreen extends StatelessWidget {
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
