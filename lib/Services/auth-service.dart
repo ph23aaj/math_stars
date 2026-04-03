@@ -16,7 +16,7 @@ class AuthService {
   String _emailForUsername(String usernameLower) =>
       '$usernameLower@mathsstars.local';
 
-  // ─── SIGN IN ────────────────────────────────────────────────────────────────
+  // ------------ SIGN IN -----------------
 
   Future<UserCredential> signInWithUsername({
     required String username,
@@ -31,17 +31,17 @@ class AuthService {
     );
   }
 
-  // ─── SIGN OUT ───────────────────────────────────────────────────────────────
+  // --------------- SIGN OUT --------------------
 
   Future<void> signOut() async {
     await _auth.signOut();
   }
 
-  // ─── CURRENT USER ───────────────────────────────────────────────────────────
+  // ---------------- CURRENT USER --------------------
 
   User? get currentUser => _auth.currentUser;
 
-  // ─── FRIENDLY ERROR ─────────────────────────────────────────────────────────
+  // ---------- FRIENDLY ERROR -----------------
 
   String friendlyAuthError(Object e) {
     if (e is FirebaseAuthException) {
@@ -61,7 +61,7 @@ class AuthService {
     return e.toString().replaceFirst('Exception: ', '');
   }
 
-  // ─── STUDENT REGISTRATION ───────────────────────────────────────────────────
+  // ---------- STUDENT REGISTRATION ----------------
 
   Future<UserCredential> signUpStudentWithUsername({
     required String username,
@@ -149,7 +149,7 @@ class AuthService {
     }
   }
 
-  // ─── PARENT REGISTRATION ────────────────────────────────────────────────────
+  // ---------- PARENT REGISTRATION -------------
 
   Future<UserCredential> signUpParentWithUsername({
     required String parentUsername,
@@ -283,7 +283,7 @@ class AuthService {
     }
   }
 
-  // ─── TEACHER REGISTRATION ───────────────────────────────────────────────────
+  // ------------ TEACHER REGISTRATION ---------
 
   Future<UserCredential> signUpTeacherWithUsername({
     required String username,
@@ -371,7 +371,7 @@ class AuthService {
     }
   }
 
-  // ─── HELPERS ────────────────────────────────────────────────────────────────
+  // ---- HELPERS ------
 
   String _normaliseClassName(String className) =>
       className.trim().toLowerCase();
