@@ -2,26 +2,30 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../Services/game_log_service.dart';
-import 'package:math_stars/Widgets/ui_cards.dart';
 import '../Services/progress_service.dart';
+import 'package:math_stars/Widgets/ui_cards.dart';
 
-class GamePlayScreen extends StatefulWidget {
-  final int level; // 1, 2, 3
-  final int game;  // 1 = addition, 2 = subtraction, 3=multiplication, 4=division
+// ------ Mock mode constants ---------------
+const int    _kBlockSize        = 5;    // questions per evaluation block
+const int    _kTotalBlocks      = 3;    // 3 blocks = 15 questions total
+const double _kPromoteThreshold = 0.70; // ≥70% correct then promote level
+const double _kDemoteThreshold  = 0.40; // <40% correct then demote level
 
-  const GamePlayScreen({
+class MockGameScreen extends StatefulWidget {
+  final int game;  // 1 = addition, 2 = subtraction, 3 = multiplication, 4 = division
+
+  const MockGameScreen({
     super.key,
-    required this.level,
     required this.game,
   });
 
   @override
-  State<GamePlayScreen> createState() => _GamePlayScreenState();
+  State<MockGameScreen> createState() => _MockGameScreenState();
 }
 
 class _Q {
   final String id;
-  final int index; // original question number 1..5
+  final int index;
   final int a;
   final int b;
 
@@ -33,40 +37,41 @@ class _Q {
   });
 }
 
-class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin {
-  static const int totalQuestions = 5;
+class _MockGameScreenState extends State<MockGameScreen> with TickerProviderStateMixin {
+
+  static const int totalQuestions = _kBlockSize * _kTotalBlocks; // 15
 
   // Game mapping: 1=addition, 2=subtraction, 3=multiplication, 4=division
-  bool get _isAddition => widget.game == 1;
-  bool get _isSubtraction => widget.game == 2;
+  bool get _isAddition       => widget.game == 1;
+  bool get _isSubtraction    => widget.game == 2;
   bool get _isMultiplication => widget.game == 3;
-  bool get _isDivision => widget.game == 4;
+  bool get _isDivision       => widget.game == 4;
 
   String get _gameId {
-    if (_isSubtraction) return 'subtraction';
+    if (_isSubtraction)    return 'subtraction';
     if (_isMultiplication) return 'multiplication';
-    if (_isDivision) return 'division';
+    if (_isDivision)       return 'division';
     return 'addition';
   }
 
   String get _gameName {
-    if (_isSubtraction) return 'Subtraction';
+    if (_isSubtraction)    return 'Subtraction';
     if (_isMultiplication) return 'Multiplication';
-    if (_isDivision) return 'Division';
+    if (_isDivision)       return 'Division';
     return 'Addition';
   }
 
   String get _opSymbol {
-    if (_isSubtraction) return '-';
+    if (_isSubtraction)    return '-';
     if (_isMultiplication) return '×';
-    if (_isDivision) return '÷';
+    if (_isDivision)       return '÷';
     return '+';
   }
 
   int _computeAnswer(int a, int b) {
-    if (_isSubtraction) return a - b;
+    if (_isSubtraction)    return a - b;
     if (_isMultiplication) return a * b;
-    if (_isDivision) return a ~/ b;
+    if (_isDivision)       return a ~/ b;
     return a + b;
   }
 
@@ -75,61 +80,62 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   final Random _sparkleRnd = Random(42);
 
-  // ---------------- Difficulty helpers ----------------
+  // ------- Adaptive level state -------------------
+  int _currentLevel = 1;  // current difficulty level (1, 2, or 3)
+  int _blockIndex   = 0;  // which block we are on (0-based)
+  int _blockCorrect = 0;  // correct answers in the current block
+  int _blockTotal   = 0;  // questions answered in the current block
 
-  // For multiplication/division progression
+  // -------- Difficulty helpers ---------------
   List<int> _tablesForLevel(int level) {
     switch (level) {
-      case 1:
-        return [2, 5, 10];
-      case 2:
-        return [3, 4, 8];
-      case 3:
-        return [6, 7, 9, 11, 12];
-      default:
-        return [2, 5, 10];
+      case 1:  return [2, 5, 10];
+      case 2:  return [3, 4, 8];
+      case 3:  return [6, 7, 9, 11, 12];
+      default: return [2, 5, 10];
     }
   }
 
-  // Create 1 base question (index is 1..5)
   _Q _makeQuestion(int index) {
+    final level = _currentLevel;
+
     // Addition
     if (_isAddition) {
-      if (widget.level == 1) {
-        final qa = rng.nextInt(11); // 0..10
-        final qb = rng.nextInt(11 - qa); // keeps sum <= 10
+      if (level == 1) {
+        final qa = rng.nextInt(11);
+        final qb = rng.nextInt(11 - qa);
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
-      } else if (widget.level == 2) {
-        int qa = rng.nextInt(21); // 0..20
+      } else if (level == 2) {
+        int qa = rng.nextInt(21);
         int qb = rng.nextInt(21 - qa);
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
       } else {
-        final qa = rng.nextInt(90) + 10; // 10..99
-        final qb = rng.nextInt(90) + 10; // 10..99
+        final qa = rng.nextInt(90) + 10;
+        final qb = rng.nextInt(90) + 10;
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
       }
     }
 
     // Subtraction
     if (_isSubtraction) {
-      if (widget.level == 1) {
-        int qa = rng.nextInt(11); // 0..10
-        int qb = rng.nextInt(qa + 1); // 0..qa
+      if (level == 1) {
+        int qa = rng.nextInt(11);
+        int qb = rng.nextInt(qa + 1);
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
-      } else if (widget.level == 2) {
-        int qa = rng.nextInt(21); // 0..20
+      } else if (level == 2) {
+        int qa = rng.nextInt(21);
         int qb = rng.nextInt(qa + 1);
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
       } else {
-        int qa = rng.nextInt(90) + 10; // 10..99
-        int qb = rng.nextInt(qa - 9) + 10; // 10..qa
+        int qa = rng.nextInt(90) + 10;
+        int qb = rng.nextInt(qa - 9) + 10;
         return _Q(id: 'q$index', index: index, a: qa, b: qb);
       }
     }
 
     // Multiplication
     if (_isMultiplication) {
-      final tables = _tablesForLevel(widget.level);
+      final tables = _tablesForLevel(level);
       final qa = tables[rng.nextInt(tables.length)];
       final qb = rng.nextInt(12) + 1;
       return _Q(id: 'q$index', index: index, a: qa, b: qb);
@@ -137,10 +143,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
     // Division (exact)
     if (_isDivision) {
-      final tables = _tablesForLevel(widget.level);
-      final divisor = tables[rng.nextInt(tables.length)];
+      final tables     = _tablesForLevel(level);
+      final divisor    = tables[rng.nextInt(tables.length)];
       final multiplier = rng.nextInt(12) + 1;
-      final dividend = divisor * multiplier;
+      final dividend   = divisor * multiplier;
       return _Q(id: 'q$index', index: index, a: dividend, b: divisor);
     }
 
@@ -156,75 +162,96 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   String answer = '';
 
-  // Current displayed values
   int a = 1;
   int b = 1;
   int get correctAnswer => _computeAnswer(a, b);
 
-  // Counters
-  int score = 0;
+  int score     = 0;
   int incorrect = 0;
 
-  // Queue (no repeats)
-  final List<_Q> _queue = [];
+  final List<_Q> _queue   = [];
   _Q? _current;
 
-  // Logging
-  DateTime? _questionStart;
-  String? _logId;
+  DateTime?_questionStart;
+  String?_logId;
   bool _saving = false;
   final List<Map<String, dynamic>> _questionLogs = [];
-  final Map<String, int> _attemptCountByQuestionId = {}; // kept but unused now (fine)
+  final Map<String, int> _attemptCountByQuestionId = {};
 
   @override
   void initState() {
     super.initState();
     _sparkleCtrl = AnimationController(
-      vsync: this,
+      vsync:    this,
       duration: const Duration(milliseconds: 520),
     );
-
     _shakeCtrl = AnimationController(
-      vsync: this,
+      vsync:    this,
       duration: const Duration(milliseconds: 360),
     );
-
     _initLogAndStart();
   }
 
   Future<void> _initLogAndStart() async {
     setState(() => _ready = false);
 
+    // Reset adaptive state
+    _currentLevel = 1;
+    _blockIndex   = 0;
+    _blockCorrect = 0;
+    _blockTotal   = 0;
+
     try {
       _logId = await GameLogService().createLog(
-        gameId: _gameId,
-        gameName: _gameName,
-        level: widget.level,
+        gameId: 'mock_$_gameId',
+        gameName: 'Mock — $_gameName',
+        level: _currentLevel,
         totalQuestions: totalQuestions,
       );
     } catch (e) {
-      debugPrint('Failed to create game log: $e');
+      debugPrint('Failed to create mock log: $e');
       _logId = null;
     }
 
     answer = '';
-    score = 0;
+    score  = 0;
     incorrect = 0;
 
     _queue.clear();
     _current = null;
-
     _questionLogs.clear();
     _attemptCountByQuestionId.clear();
 
-    for (int i = 1; i <= totalQuestions; i++) {
-      _queue.add(_makeQuestion(i));
-    }
+    // Build the first block
+    _buildNextBlock(startIndex: 1);
 
     _current = _queue.removeAt(0);
 
     setState(() => _ready = true);
     _startNewQuestion();
+  }
+
+  // Build _kBlockSize questions at the current level and add them to the queue
+  void _buildNextBlock({required int startIndex}) {
+    for (int i = 0; i < _kBlockSize; i++) {
+      _queue.add(_makeQuestion(startIndex + i));
+    }
+  }
+
+  // Evaluate accuracy after a completed block and adjust level
+  void _evaluateBlockAndAdvance() {
+    final accuracy = _blockTotal == 0 ? 0.0 : _blockCorrect / _blockTotal;
+
+    if (accuracy >= _kPromoteThreshold && _currentLevel < 3) {
+      _currentLevel++;
+    } else if (accuracy < _kDemoteThreshold && _currentLevel > 1) {
+      _currentLevel--;
+    }
+    // else: stay at current level
+
+    _blockCorrect = 0;
+    _blockTotal   = 0;
+    _blockIndex++;
   }
 
   void _startNewQuestion() {
@@ -234,7 +261,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     a = q.a;
     b = q.b;
 
-    answer = '';
+    answer         = '';
     _questionStart = DateTime.now();
 
     setState(() {});
@@ -255,7 +282,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   void _enter() {
-    final int? parsed = int.tryParse(answer);
+    final int? parsed    = int.tryParse(answer);
     final bool isCorrect = (parsed != null && parsed == correctAnswer);
 
     if (isCorrect) {
@@ -265,17 +292,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     }
 
     _submitAttempt(
-      isCorrect: isCorrect,
+      isCorrect:  isCorrect,
       userAnswer: parsed,
-      timedOut: false,
-      snack: isCorrect ? 'Correct! +1' : 'Incorrect',
+      timedOut:   false,
+      snack:      isCorrect ? 'Correct! +1' : 'Incorrect',
     );
   }
 
   Future<void> _submitAttempt({
-    required bool isCorrect,
-    required int? userAnswer,
-    required bool timedOut,
+    required bool   isCorrect,
+    required int?   userAnswer,
+    required bool   timedOut,
     required String snack,
   }) async {
     final q = _current;
@@ -284,27 +311,31 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     final attemptNo = (_attemptCountByQuestionId[q.id] ?? 0) + 1;
     _attemptCountByQuestionId[q.id] = attemptNo;
 
-    final now = DateTime.now();
-    final timeTakenMs =
-    _questionStart == null ? 0 : now.difference(_questionStart!).inMilliseconds;
+    final now         = DateTime.now();
+    final timeTakenMs = _questionStart == null
+        ? 0
+        : now.difference(_questionStart!).inMilliseconds;
 
     if (isCorrect) {
-      score += 1;
+      score++;
+      _blockCorrect++;
     } else {
-      incorrect += 1;
+      incorrect++;
     }
+    _blockTotal++;
 
     _questionLogs.add({
-      'questionId': q.id,
+      'questionId':    q.id,
       'questionIndex': q.index,
-      'a': q.a,
-      'b': q.b,
-      'operator': _opSymbol,
+      'a':             q.a,
+      'b':             q.b,
+      'operator':      _opSymbol,
       'correctAnswer': _computeAnswer(q.a, q.b),
-      'userAnswer': userAnswer,
-      'isCorrect': isCorrect,
-      'timeTakenMs': timeTakenMs,
-      'timedOut': timedOut,
+      'userAnswer':    userAnswer,
+      'isCorrect':     isCorrect,
+      'timeTakenMs':   timeTakenMs,
+      'timedOut':      timedOut,
+      'level':         _currentLevel,
     });
 
     await _saveQuestionUpdate();
@@ -312,10 +343,26 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(snack),
+          content:  Text(snack),
           duration: const Duration(milliseconds: 700),
         ),
       );
+    }
+
+    //----- Check if this block is complete ---------
+    if (_blockTotal == _kBlockSize) {
+      final completedBlocks = _blockIndex + 1;
+
+      // All blocks done, then finish session
+      if (completedBlocks >= _kTotalBlocks) {
+        await _finishGame();
+        return;
+      }
+
+      // Evaluate and build next block
+      _evaluateBlockAndAdvance();
+      final nextStart = _questionLogs.length + 1;
+      _buildNextBlock(startIndex: nextStart);
     }
 
     if (_queue.isEmpty) {
@@ -330,22 +377,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   Future<void> _saveQuestionUpdate() async {
     final logId = _logId;
-    if (logId == null) return;
-
-    if (_saving) return;
+    if (logId == null || _saving) return;
     _saving = true;
 
     try {
       await GameLogService().updateAfterQuestion(
-        logId: logId,
-        questionIndex: _questionLogs.length + 1,
-        correct: score,
-        incorrect: incorrect,
-        questionLog: _questionLogs.isEmpty ? {} : _questionLogs.last,
+        logId:             logId,
+        questionIndex:     _questionLogs.length + 1,
+        correct:           score,
+        incorrect:         incorrect,
+        questionLog:       _questionLogs.isEmpty ? {} : _questionLogs.last,
         allQuestionsSoFar: List<Map<String, dynamic>>.from(_questionLogs),
       );
     } catch (e) {
-      debugPrint('Failed to update game log: $e');
+      debugPrint('Failed to update mock log: $e');
     } finally {
       _saving = false;
     }
@@ -355,8 +400,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     int computeAvgTimeMs() {
       if (_questionLogs.isEmpty) return 0;
       final total = _questionLogs.fold<int>(
-        0,
-            (sum, q) => sum + ((q['timeTakenMs'] ?? 0) as int),
+        0, (sum, q) => sum + ((q['timeTakenMs'] ?? 0) as int),
       );
       return (total / _questionLogs.length).round();
     }
@@ -366,22 +410,22 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       final avg = computeAvgTimeMs();
       try {
         await GameLogService().markCompleted(
-          logId: logId,
-          correct: score,
+          logId:     logId,
+          correct:   score,
           incorrect: incorrect,
           avgTimeMs: avg,
         );
       } catch (e) {
-        debugPrint('Failed to mark completed: $e');
+        debugPrint('Failed to mark mock completed: $e');
       }
     }
 
     try {
       await ProgressService().recordGameResultSimple(
-        gameId: _gameId,
-        correct: score,
+        gameId:    'mock_$_gameId',
+        correct:   score,
         incorrect: incorrect,
-        level: widget.level,
+        level:     _currentLevel,
       );
     } catch (e) {
       debugPrint('Failed to update progress: $e');
@@ -389,19 +433,29 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
     if (!mounted) return;
 
+    final pct = (score / totalQuestions * 100).round();
+
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Mission complete'),
-        content: Text('You scored $score / $totalQuestions'),
+        title:   const Text('Mock complete'),
+        content: Column(
+          mainAxisSize:MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Score: $score / $totalQuestions ($pct%)'),
+            const SizedBox(height: 8),
+            Text('Final level reached: $_currentLevel'),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               Navigator.pop(context);
             },
-            child: const Text('OK'),
+            child: const Text('Done'),
           ),
         ],
       ),
@@ -412,7 +466,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Exit mission?'),
+        title:   const Text('Exit mock?'),
         content: const Text('Your current progress will be lost.'),
         actions: [
           TextButton(
@@ -430,12 +484,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               if (logId != null) {
                 try {
                   await GameLogService().markAbandoned(
-                    logId: logId,
-                    correct: score,
+                    logId:     logId,
+                    correct:   score,
                     incorrect: incorrect,
                   );
                 } catch (e) {
-                  debugPrint('Failed to mark abandoned: $e');
+                  debugPrint('Failed to mark mock abandoned: $e');
                 }
               }
 
@@ -455,13 +509,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     super.dispose();
   }
 
-  void _playSparkles() {
-    _sparkleCtrl.forward(from: 0);
-  }
-
-  void _playShake() {
-    _shakeCtrl.forward(from: 0);
-  }
+  void _playSparkles() => _sparkleCtrl.forward(from: 0);
+  void _playShake()    => _shakeCtrl.forward(from: 0);
 
   @override
   Widget build(BuildContext context) {
@@ -471,12 +520,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       );
     }
 
-    final qIndex = _current!.index;
+    final qIndex    = _current!.index;
+    final blockNum  = _blockIndex + 1;
 
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient and Stars overlay
           const SpaceBackground(),
 
           SafeArea(
@@ -484,23 +533,24 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Column(
                 children: [
+
                   // ---------- TOP BAR ----------
                   Row(
                     children: [
                       GlassIconButton(
-                        icon: Icons.close,
+                        icon:  Icons.close,
                         onTap: _confirmExit,
                       ),
                       const SizedBox(width: 12),
 
                       Expanded(
                         child: Text(
-                          '$_gameName • Level ${widget.level}',
+                          'Mock — $_gameName • Level $_currentLevel',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color:      Colors.white,
                             fontWeight: FontWeight.w900,
-                            fontSize: 16,
+                            fontSize:   16,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -512,7 +562,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     ],
                   ),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
+
+                  // ---------- BLOCK PROGRESS ----------
+                  _BlockProgress(
+                    blockNum:    blockNum,
+                    totalBlocks: _kTotalBlocks,
+                    blockTotal:  _blockTotal,
+                    blockSize:   _kBlockSize,
+                  ),
+
+                  const SizedBox(height: 10),
 
                   // ---------- GAME AREA ----------
                   GlassCard(
@@ -530,31 +590,28 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                         Stack(
                           alignment: Alignment.center,
                           children: [
-                            // Sparkles behind
                             IgnorePointer(
                               child: AnimatedBuilder(
                                 animation: _sparkleCtrl,
                                 builder: (_, _) {
                                   return CustomPaint(
-                                    size: const Size(280, 110),
+                                    size:    const Size(280, 110),
                                     painter: _SparkleBurstPainter(
-                                      t: _sparkleCtrl.value,
+                                      t:    _sparkleCtrl.value,
                                       seed: 11,
                                     ),
                                   );
                                 },
                               ),
                             ),
-
-                            // The question text on top
                             Text(
                               '$a $_opSymbol $b = ?',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 44,
+                                color:      Colors.white,
+                                fontSize:   44,
                                 fontWeight: FontWeight.w900,
-                                height: 1.0,
+                                height:     1.0,
                               ),
                             ),
                           ],
@@ -565,13 +622,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                         AnimatedBuilder(
                           animation: _shakeCtrl,
                           builder: (context, child) {
-                            // Decaying shake: 0 -> 1
-                            final t = _shakeCtrl.value;
-                            final amp = (1.0 - t) * 10.0; // max pixels
-                            final dx = sin(t * pi * 10) * amp; // oscillation
+                            final t   = _shakeCtrl.value;
+                            final amp = (1.0 - t) * 10.0;
+                            final dx  = sin(t * pi * 10) * amp;
                             return Transform.translate(
                               offset: Offset(dx, 0),
-                              child: child,
+                              child:  child,
                             );
                           },
                           child: _AnswerBox(text: answer),
@@ -585,9 +641,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   // ---------- KEYPAD ----------
                   Expanded(
                     child: _Keypad(
-                      onDigit: _pressDigit,
+                      onDigit:     _pressDigit,
                       onBackspace: _backspace,
-                      onEnter: _enter,
+                      onEnter:     _enter,
                     ),
                   ),
 
@@ -596,9 +652,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   Text(
                     'Type your answer and launch ↵',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
+                      color:      Colors.white.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w700,
-                      fontSize: 12,
+                      fontSize:   12,
                     ),
                   ),
                 ],
@@ -610,6 +666,72 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     );
   }
 }
+
+// ------------------ BLOCK PROGRESS INDICATOR ------------------
+
+class _BlockProgress extends StatelessWidget {
+  const _BlockProgress({
+    required this.blockNum,
+    required this.totalBlocks,
+    required this.blockTotal,
+    required this.blockSize,
+  });
+
+  final int blockNum;
+  final int totalBlocks;
+  final int blockTotal;
+  final int blockSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(totalBlocks, (i) {
+        final isActive   = i + 1 == blockNum;
+        final isComplete = i + 1 <  blockNum;
+
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              children: [
+                Text(
+                  'Block ${i + 1}',
+                  style: TextStyle(
+                    color:      Colors.white.withValues(alpha: isActive ? 0.95 : 0.45),
+                    fontSize:   10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: isComplete
+                        ? 1.0
+                        : isActive
+                        ? blockTotal / blockSize
+                        : 0.0,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isComplete
+                          ? const Color(0xFF4CAF50)
+                          : const Color(0xFFFFD166),
+                    ),
+                    minHeight: 6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+// ------------------ SCORE PILL ------------------
 
 class _ScorePill extends StatelessWidget {
   const _ScorePill({required this.score});
@@ -631,9 +753,9 @@ class _ScorePill extends StatelessWidget {
           Text(
             '$score',
             style: const TextStyle(
-              color: Colors.white,
+              color:      Colors.white,
               fontWeight: FontWeight.w900,
-              fontSize: 15,
+              fontSize:   15,
             ),
           ),
         ],
@@ -641,6 +763,8 @@ class _ScorePill extends StatelessWidget {
     );
   }
 }
+
+// ------------------ MINI CHIP ------------------
 
 class _MiniChip extends StatelessWidget {
   const _MiniChip({required this.text});
@@ -658,14 +782,16 @@ class _MiniChip extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.90),
+          color:      Colors.white.withValues(alpha: 0.90),
           fontWeight: FontWeight.w800,
-          fontSize: 12,
+          fontSize:   12,
         ),
       ),
     );
   }
 }
+
+// ------------------ ANSWER BOX ------------------
 
 class _AnswerBox extends StatelessWidget {
   const _AnswerBox({required this.text});
@@ -687,9 +813,9 @@ class _AnswerBox extends StatelessWidget {
         shown,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          color: Colors.white,
-          fontSize: 30,
-          fontWeight: FontWeight.w900,
+          color:       Colors.white,
+          fontSize:    30,
+          fontWeight:  FontWeight.w900,
           letterSpacing: 2,
         ),
       ),
@@ -743,7 +869,7 @@ class _Keypad extends StatelessWidget {
       String label, {
         required VoidCallback onTap,
         bool isPrimary = false,
-        bool isAction = false,
+        bool isAction  = false,
       }) {
     final Color border = isPrimary
         ? const Color(0xFFFFD166)
@@ -770,9 +896,9 @@ class _Keypad extends StatelessWidget {
                 border: Border.all(color: border.withValues(alpha: isPrimary ? 0.55 : 1.0)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.22),
+                    color:      Colors.black.withValues(alpha: 0.22),
                     blurRadius: 14,
-                    offset: const Offset(0, 8),
+                    offset:     const Offset(0, 8),
                   ),
                 ],
               ),
@@ -780,8 +906,8 @@ class _Keypad extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: isPrimary ? 0.95 : 0.92),
-                  fontSize: 18,
+                  color:      Colors.white.withValues(alpha: isPrimary ? 0.95 : 0.92),
+                  fontSize:   18,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -793,6 +919,7 @@ class _Keypad extends StatelessWidget {
   }
 }
 
+// ------------------ SPARKLE BURST PAINTER ------------------
 
 class _SparkleBurstPainter extends CustomPainter {
   _SparkleBurstPainter({
@@ -800,31 +927,27 @@ class _SparkleBurstPainter extends CustomPainter {
     required this.seed,
   });
 
-  final double t; // 0..1
-  final int seed;
+  final double t;
+  final int    seed;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (t <= 0) return;
 
-    // Burst expands then fades
     final progress = Curves.easeOutCubic.transform(t);
-    final fade = (1.0 - t).clamp(0.0, 1.0);
+    final fade     = (1.0 - t).clamp(0.0, 1.0);
 
-    final rnd = Random(seed);
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // Two colours: warm + cool sparkles
+    final rnd   = Random(seed);
+    final cx    = size.width  / 2;
+    final cy    = size.height / 2;
     final paint = Paint()..style = PaintingStyle.fill;
 
     for (int i = 0; i < 26; i++) {
-      final angle = rnd.nextDouble() * pi * 2;
-      final dist = (rnd.nextDouble() * 42 + 12) * progress; // expand
-      final x = cx + cos(angle) * dist;
-      final y = cy + sin(angle) * dist;
-
-      final r = (rnd.nextDouble() * 2.4 + 1.0) * (1.0 - t * 0.6);
+      final angle  = rnd.nextDouble() * pi * 2;
+      final dist   = (rnd.nextDouble() * 42 + 12) * progress;
+      final x      = cx + cos(angle) * dist;
+      final y      = cy + sin(angle) * dist;
+      final r      = (rnd.nextDouble() * 2.4 + 1.0) * (1.0 - t * 0.6);
       final isWarm = rnd.nextBool();
 
       paint.color = (isWarm ? const Color(0xFFFFD166) : const Color(0xFF9FD3FF))
@@ -833,11 +956,10 @@ class _SparkleBurstPainter extends CustomPainter {
       canvas.drawCircle(Offset(x, y), r, paint);
     }
 
-    // A soft glow ring
     final glow = Paint()
-      ..style = PaintingStyle.stroke
+      ..style       = PaintingStyle.stroke
       ..strokeWidth = 3.0
-      ..color = const Color(0xFFFFD166).withValues(alpha: 0.22 * fade);
+      ..color       = const Color(0xFFFFD166).withValues(alpha: 0.22 * fade);
 
     canvas.drawCircle(Offset(cx, cy), 18 + 34 * progress, glow);
   }

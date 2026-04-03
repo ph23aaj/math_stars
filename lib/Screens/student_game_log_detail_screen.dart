@@ -227,8 +227,17 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                                   Icon(icon, size: 18, color: Colors.white.withValues(alpha: 0.9)),
                                   const SizedBox(width: 10),
                                   Expanded(
-                                    child: Text(
-                                      'Your answer: $answerText  •  $resultText  •  ${timeSec}s',
+                                    child: isCorrect
+                                        ? Text(
+                                      'Your answer: $answerText',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white.withValues(alpha: 0.82),
+                                      ),
+                                    )
+                                        : Text(
+                                      'Your answer: $answerText  •  Correct answer: $ca',
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
