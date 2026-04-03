@@ -52,7 +52,7 @@ class GameLogService {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception('Not signed in.');
 
-    // We write the whole list each time (only 5 questions, so it’s fine and keeps order).
+    // Writes the whole list each time (only 5 questions).
     await _logRef(uid, logId).set({
       'questionIndex': questionIndex,
       'correct': correct,

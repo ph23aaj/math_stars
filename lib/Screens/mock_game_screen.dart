@@ -82,7 +82,7 @@ class _MockGameScreenState extends State<MockGameScreen> with TickerProviderStat
 
   // ------- Adaptive level state -------------------
   int _currentLevel = 1;  // current difficulty level (1, 2, or 3)
-  int _blockIndex   = 0;  // which block we are on (0-based)
+  int _blockIndex   = 0;  // which block user is on (0-based)
   int _blockCorrect = 0;  // correct answers in the current block
   int _blockTotal   = 0;  // questions answered in the current block
 
@@ -204,7 +204,7 @@ class _MockGameScreenState extends State<MockGameScreen> with TickerProviderStat
     try {
       _logId = await GameLogService().createLog(
         gameId: 'mock_$_gameId',
-        gameName: 'Mock — $_gameName',
+        gameName: 'Mock - $_gameName',
         level: _currentLevel,
         totalQuestions: totalQuestions,
       );
@@ -545,7 +545,7 @@ class _MockGameScreenState extends State<MockGameScreen> with TickerProviderStat
 
                       Expanded(
                         child: Text(
-                          'Mock — $_gameName • Level $_currentLevel',
+                          'Mock - $_gameName • Level $_currentLevel',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color:      Colors.white,
@@ -650,7 +650,7 @@ class _MockGameScreenState extends State<MockGameScreen> with TickerProviderStat
                   const SizedBox(height: 10),
 
                   Text(
-                    'Type your answer and launch ↵',
+                    'Type your answer and launch Enter',
                     style: TextStyle(
                       color:      Colors.white.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w700,
@@ -857,8 +857,8 @@ class _Keypad extends StatelessWidget {
             _key('8', onTap: () => onDigit(8)),
             _key('9', onTap: () => onDigit(9)),
             _key('0', onTap: () => onDigit(0)),
-            _key('⌫', onTap: onBackspace, isAction: true),
-            _key('↵', onTap: onEnter, isPrimary: true),
+            _key('Delete', onTap: onBackspace, isAction: true),
+            _key('Enter', onTap: onEnter, isPrimary: true),
           ],
         ),
       ],

@@ -185,8 +185,7 @@ class AuthService {
     }
 
     // 2) Sign in as the child to verify their password AND read their profile
-    //    while authenticated as them — the only moment we have permission to
-    //    read the students/{childUid} document without being the parent yet.
+    //    while authenticated as them
     final childEmail = _emailForUsername(childLower);
     String childFirstName = '';
     String childLastName = '';
@@ -208,7 +207,7 @@ class AuthService {
       await _auth.signOut();
     }
 
-    // 3) Reserve parent username (runs unauthenticated — allowed by rules)
+    // 3) Reserve parent username
     final parentUsernameDoc = _db.collection('usernames').doc(parentLower);
 
     await _db.runTransaction((tx) async {
@@ -233,7 +232,7 @@ class AuthService {
       final parentUid = cred.user!.uid;
 
       // 5) Batch write all parent documents.
-      //    Uses childFirstName/childLastName captured in step 2 —
+      //    Uses childFirstName/childLastName captured in step 2
       //    no additional student reads needed here.
       final batch = _db.batch();
 

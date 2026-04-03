@@ -181,7 +181,7 @@ class StudentGameLogDetailScreen extends StatelessWidget {
                           ? 'Correct'
                           : 'Incorrect';
 
-                      final answerText = ua == null ? '—' : ua.toString();
+                      final answerText = ua == null ? '-' : ua.toString();
 
                       IconData icon;
                       if (timedOut) {

@@ -594,7 +594,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   const SizedBox(height: 10),
 
                   Text(
-                    'Type your answer and launch ↵',
+                    'Type your answer and launch Enter',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w700,
@@ -731,8 +731,8 @@ class _Keypad extends StatelessWidget {
             _key('8', onTap: () => onDigit(8)),
             _key('9', onTap: () => onDigit(9)),
             _key('0', onTap: () => onDigit(0)),
-            _key('⌫', onTap: onBackspace, isAction: true),
-            _key('↵', onTap: onEnter, isPrimary: true),
+            _key('Delete', onTap: onBackspace, isAction: true),
+            _key('Enter', onTap: onEnter, isPrimary: true),
           ],
         ),
       ],

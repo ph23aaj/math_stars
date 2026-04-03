@@ -203,7 +203,7 @@ class ParentDashboardScreen extends StatelessWidget {
                                           ),
                                         ),
                                         subtitle: Text(
-                                          'Class: ${className.isEmpty ? '—' : className}\nLast played: ${formatDate(playedDate)}',
+                                          'Class: ${className.isEmpty ? '-' : className}\nLast played: ${formatDate(playedDate)}',
                                           style: TextStyle(
                                             color: Colors.white.withValues(alpha: 0.72),
                                             fontWeight: FontWeight.w600,

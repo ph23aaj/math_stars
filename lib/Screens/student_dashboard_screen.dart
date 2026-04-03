@@ -248,7 +248,7 @@ class _ProfileCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      className.isEmpty ? 'Class: —' : 'Class: $className',
+                      className.isEmpty ? 'Class: -' : 'Class: $className',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
